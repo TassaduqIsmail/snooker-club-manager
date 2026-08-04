@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Snooker Club Manager</title>
+<style>
+:root{--bg:#0b0f19;--surface:#151b2b;--surface-hover:#1e2740;--text:#e2e8f0;--text-muted:#64748b;--accent:#0ea5e9;--accent-hover:#0284c7;--success:#22c55e;--success-bg:#064e3b;--danger:#ef4444;--danger-bg:#7f1d1d;--warning:#f59e0b;--warning-bg:#451a03;--border:#1e293b;--radius:14px;--shadow:0 8px 30px rgba(0,0,0,0.4)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+.header{background:var(--surface);padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.header h1{font-size:1.25rem;font-weight:800}
+.nav-tabs{display:flex;gap:0.5rem;align-items:center}
+.nav-tab{padding:0.5rem 1rem;border-radius:var(--radius);border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:0.875rem;font-weight:600;transition:all .2s}
+.nav-tab:hover{color:var(--text);background:var(--surface-hover)}
+.nav-tab.active{color:var(--accent);background:rgba(14,165,233,0.12)}
+.icon-btn{padding:0.5rem;border-radius:var(--radius);border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:1.1rem;transition:all .2s}
+.icon-btn:hover{color:var(--accent);background:rgba(14,165,233,0.1)}
+.main{flex:1;padding:1.5rem;max-width:1200px;width:100%;margin:0 auto}
+.view{display:none}
+.view.active{display:block}
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem}
+.resource-card{background:var(--surface);border-radius:var(--radius);padding:1.5rem;border:2px solid transparent;transition:all .2s;cursor:pointer;position:relative;overflow:hidden}
+.resource-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.resource-card.available{border-color:var(--success)}
+.resource-card.in-use{border-color:var(--danger)}
+.status-badge{position:absolute;top:1rem;right:1rem;padding:0.35rem 0.85rem;border-radius:999px;font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.05em}
+.status-badge.available{background:var(--success-bg);color:var(--success)}
+.status-badge.in-use{background:var(--danger-bg);color:var(--danger)}
+.resource-name{font-size:1.5rem;font-weight:800;margin-bottom:0.25rem}
+.resource-type{color:var(--text-muted);font-size:0.8rem;margin-bottom:1rem}
+.resource-info{margin-top:0.5rem}
+.info-row{display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:0.85rem}
+.info-row:last-child{border-bottom:none}
+.info-label{color:var(--text-muted)}
+.info-value{font-weight:600}
+.running-timer{font-size:2.2rem;font-weight:800;font-variant-numeric:tabular-nums;margin:0.5rem 0;color:var(--accent)}
+.running-bill{font-size:1.3rem;font-weight:700;color:var(--warning)}
+.players-on-card{font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem;line-height:1.4}
+.action-btn{width:100%;margin-top:1rem;padding:0.9rem;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-start{background:var(--success);color:white}
+.btn-start:hover{background:#16a34a}
+.btn-stop{background:var(--danger);color:white}
+.btn-stop:hover{background:#dc2626}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);display:none;justify-content:center;align-items:center;z-index:200;padding:1rem}
+.modal-overlay.active{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;box-shadow:0 25px 50px -12px rgba(0,0,0,0.6);border:1px solid var(--border)}
+.modal-header{padding:1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:5}
+.modal-header h2{font-size:1.1rem;font-weight:700}
+.modal-close{background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;line-height:1}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:1.25rem}
+.form-group{margin-bottom:1.1rem}
+.form-label{display:block;margin-bottom:0.4rem;font-size:0.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.03em}
+.form-input,.form-select{width:100%;padding:0.7rem 1rem;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:1rem;outline:none;transition:border-color .2s}
+.form-input:focus,.form-select:focus{border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.radio-group{display:flex;gap:0.5rem}
+.radio-btn{flex:1;padding:0.7rem;border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text-muted);cursor:pointer;text-align:center;font-weight:700;transition:all .2s}
+.radio-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(14,165,233,0.1)}
+.btn-primary{width:100%;padding:0.9rem;border:none;border-radius:10px;background:var(--accent);color:white;font-size:1rem;font-weight:700;cursor:pointer;transition:background .2s}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-secondary{width:100%;padding:0.8rem;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--text);font-size:0.95rem;font-weight:600;cursor:pointer;margin-top:0.5rem}
+.btn-secondary:hover{background:var(--surface-hover)}
+.btn-success{width:100%;padding:0.9rem;border:none;border-radius:10px;background:var(--success);color:white;font-size:1rem;font-weight:700;cursor:pointer}
+.btn-success:hover{background:#16a34a}
+.btn-danger{width:100%;padding:0.9rem;border:none;border-radius:10px;background:var(--danger);color:white;font-size:1rem;font-weight:700;cursor:pointer}
+.btn-danger:hover{background:#dc2626}
+.player-slot{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.6rem;background:var(--bg);border-radius:10px;padding:0.6rem 0.8rem;border:1px solid var(--border)}
+.player-slot .player-num{width:30px;height:30px;border-radius:50%;background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;flex-shrink:0}
+.player-slot input{flex:1;background:transparent;border:none;color:var(--text);font-size:0.95rem;outline:none;padding:0.2rem}
+.player-slot input::placeholder{color:var(--text-muted);opacity:0.6}
+.player-slot .player-tag{font-size:0.7rem;padding:0.2rem 0.5rem;border-radius:6px;background:var(--success-bg);color:var(--success);font-weight:700;white-space:nowrap}
+.player-slot .player-tag.guest{background:var(--border);color:var(--text-muted)}
+.player-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-top:0.25rem;max-height:180px;overflow-y:auto;z-index:20;display:none;box-shadow:var(--shadow)}
+.player-dropdown.active{display:block}
+.player-dropdown .dd-item{padding:0.6rem 0.9rem;cursor:pointer;font-size:0.85rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.player-dropdown .dd-item:hover{background:var(--surface-hover)}
+.player-dropdown .dd-item:last-child{border-bottom:none}
+.player-dropdown .dd-add{color:var(--accent);font-weight:700}
+.player-dropdown .dd-guest{color:var(--text-muted);font-size:0.75rem}
+.player-input-wrap{position:relative;flex:1}
+.bill-summary{background:var(--bg);border-radius:12px;padding:1rem;margin-bottom:1rem;border:1px solid var(--border)}
+.bill-row{display:flex;justify-content:space-between;padding:0.5rem 0;font-size:0.9rem}
+.bill-row.total{border-top:2px solid var(--border);margin-top:0.5rem;padding-top:0.75rem;font-size:1.3rem;font-weight:800;color:var(--warning)}
+.loser-section{background:var(--bg);border-radius:12px;padding:1rem;margin-bottom:1rem;border:1px solid var(--border)}
+.loser-section h4{font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:0.03em}
+.loser-option{display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.8rem;margin-bottom:0.4rem;border-radius:10px;cursor:pointer;border:1.5px solid var(--border);transition:all .2s}
+.loser-option:hover{border-color:var(--accent)}
+.loser-option.selected{border-color:var(--danger);background:rgba(239,68,68,0.08)}
+.loser-option input{accent-color:var(--danger);width:18px;height:18px}
+.loser-option .loser-name{font-weight:700;flex:1}
+.loser-option .loser-tag{font-size:0.7rem;padding:0.15rem 0.5rem;border-radius:6px;background:var(--surface-hover);color:var(--text-muted)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.toggle-label{font-weight:700;font-size:0.95rem}
+.toggle-switch{position:relative;width:48px;height:26px;background:var(--border);border-radius:13px;cursor:pointer;transition:background .2s}
+.toggle-switch.on{background:var(--accent)}
+.toggle-switch::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;background:white;border-radius:50%;transition:transform .2s}
+.toggle-switch.on::after{transform:translateX(22px)}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+.page-header h2{font-size:1.5rem}
+.search-box{position:relative;max-width:320px;width:100%}
+.search-box input{width:100%;padding:0.7rem 1rem 0.7rem 2.5rem;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);outline:none;font-size:0.95rem}
+.search-box::before{content:"🔍";position:absolute;left:0.8rem;top:50%;transform:translateY(-50%);opacity:0.5;font-size:0.9rem}
+.customer-list{display:grid;gap:0.75rem}
+.customer-item{background:var(--surface);border-radius:var(--radius);padding:1.1rem;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:all .2s;border:1px solid transparent}
+.customer-item:hover{border-color:var(--accent)}
+.customer-name{font-weight:800;font-size:1.1rem}
+.customer-meta{color:var(--text-muted);font-size:0.82rem;margin-top:0.3rem}
+.customer-balance{font-size:1.1rem;font-weight:700;color:var(--warning);text-align:right}
+.customer-balance.paid{color:var(--success)}
+.customer-balance small{display:block;font-size:0.72rem;color:var(--text-muted);font-weight:400}
+.wl-badge{display:inline-flex;gap:0.5rem;margin-top:0.3rem}
+.wl-badge span{font-size:0.72rem;padding:0.15rem 0.5rem;border-radius:6px;font-weight:700}
+.wl-win{background:var(--success-bg);color:var(--success)}
+.wl-loss{background:var(--danger-bg);color:var(--danger)}
+.profile-header{background:var(--surface);border-radius:var(--radius);padding:1.5rem;margin-bottom:1.5rem;border:1px solid var(--border)}
+.profile-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;margin-top:1rem}
+.stat-box{background:var(--bg);border-radius:12px;padding:1rem;text-align:center;border:1px solid var(--border)}
+.stat-value{font-size:1.4rem;font-weight:800}
+.stat-label{font-size:0.7rem;color:var(--text-muted);margin-top:0.3rem;text-transform:uppercase;letter-spacing:0.04em}
+.history-table{width:100%;border-collapse:collapse;font-size:0.85rem}
+.history-table th,.history-table td{padding:0.75rem;text-align:left;border-bottom:1px solid var(--border)}
+.history-table th{color:var(--text-muted);font-weight:700;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.04em}
+.history-table tr:hover{background:var(--surface-hover)}
+.badge{display:inline-block;padding:0.25rem 0.6rem;border-radius:999px;font-size:0.72rem;font-weight:800}
+.badge-paid{background:var(--success-bg);color:var(--success)}
+.badge-pending{background:var(--danger-bg);color:var(--danger)}
+.badge-partial{background:var(--warning-bg);color:var(--warning)}
+.badge-win{background:var(--success-bg);color:var(--success)}
+.badge-loss{background:var(--danger-bg);color:var(--danger)}
+.tabs-row{display:flex;gap:0.5rem;margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem}
+.tab-btn{padding:0.5rem 1rem;border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:0.85rem;font-weight:700;border-radius:10px}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);background:rgba(14,165,233,0.1)}
+.payment-history-item{background:var(--bg);border-radius:10px;padding:0.9rem 1rem;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;border:1px solid var(--border)}
+.payment-history-item .pay-date{color:var(--text-muted);font-size:0.8rem}
+.payment-history-item .pay-amount{font-weight:800;color:var(--success);font-size:1.1rem}
+.payment-history-item .pay-note{color:var(--text-muted);font-size:0.75rem}
+.closing-controls{display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.closing-controls input[type="date"]{padding:0.7rem;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);font-size:1rem}
+.summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem}
+.summary-card{background:var(--surface);border-radius:var(--radius);padding:1.25rem;border:1px solid var(--border)}
+.summary-card h3{font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.04em}
+.summary-card .value{font-size:1.8rem;font-weight:800}
+.summary-card .value.revenue{color:var(--success)}
+.summary-card .value.pending{color:var(--warning)}
+.summary-card .value.sessions{color:var(--accent)}
+.section-title{font-size:1.1rem;font-weight:800;margin:1.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border)}
+.empty-state{text-align:center;padding:3rem;color:var(--text-muted)}
+.empty-state-icon{font-size:3rem;margin-bottom:1rem;opacity:0.5}
+.backup-card{background:var(--surface);border-radius:var(--radius);padding:1.25rem;border:1px solid var(--border);margin-bottom:1rem}
+.backup-card h3{font-size:1rem;margin-bottom:0.5rem}
+.backup-card p{color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem;line-height:1.5}
+.file-input{display:none}
+.file-label{display:inline-block;padding:0.7rem 1.25rem;border:1.5px dashed var(--border);border-radius:10px;background:var(--bg);color:var(--text-muted);cursor:pointer;font-weight:600;transition:all .2s;text-align:center;width:100%}
+.file-label:hover{border-color:var(--accent);color:var(--accent)}
+.alert-box{padding:0.875rem 1rem;border-radius:10px;margin-bottom:1rem;font-size:0.9rem;font-weight:600}
+.alert-success{background:var(--success-bg);color:var(--success);border:1px solid var(--success)}
+.alert-danger{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger)}
+.alert-warning{background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning)}
+.data-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin:1rem 0}
+.data-summary .sum-box{background:var(--bg);border-radius:10px;padding:0.875rem;text-align:center;border:1px solid var(--border)}
+.data-summary .sum-value{font-size:1.3rem;font-weight:800;color:var(--accent)}
+.data-summary .sum-label{font-size:0.7rem;color:var(--text-muted);margin-top:0.25rem;text-transform:uppercase}
+@media(max-width:640px){.header{flex-direction:column;gap:0.75rem}.main{padding:1rem}.form-row{grid-template-columns:1fr}.page-header{flex-direction:column;gap:1rem;align-items:stretch}.search-box{max-width:none}}
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f19">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Snooker Club">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Snooker Club Manager">
+<link rel="manifest" href="manifest.json">
+</head>
+<body>
+<div class="header">
+<h1>🎱 Snooker Club Manager</h1>
+<div class="nav-tabs">
+<button class="nav-tab active" data-view="dashboard">Dashboard</button>
+<button class="nav-tab" data-view="customers">Customers</button>
+<button class="nav-tab" data-view="closing">Daily Closing</button>
+<button class="icon-btn" onclick="openBackupModal()" title="Backup & Restore">💾</button>
+</div>
+</div>
+<div class="main">
+<div class="view active" id="view-dashboard"><div class="dashboard-grid" id="resource-grid"></div></div>
+<div class="view" id="view-customers">
+<div class="page-header"><h2>Customers</h2><div class="search-box"><input type="text" id="customer-search" placeholder="Search customers..."></div></div>
+<div class="customer-list" id="customer-list"></div>
+</div>
+<div class="view" id="view-customer-profile">
+<button class="btn-secondary" onclick="showView('customers')" style="width:auto;margin-bottom:1rem;">← Back to Customers</button>
+<div class="profile-header">
+<h2 id="profile-name">Customer</h2>
+<div class="profile-stats">
+<div class="stat-box"><div class="stat-value" id="profile-visits" style="color:var(--accent)">0</div><div class="stat-label">Total Visits</div></div>
+<div class="stat-box"><div class="stat-value" id="profile-wins" style="color:var(--success)">0</div><div class="stat-label">Wins</div></div>
+<div class="stat-box"><div class="stat-value" id="profile-losses" style="color:var(--danger)">0</div><div class="stat-label">Losses</div></div>
+<div class="stat-box"><div class="stat-value" id="profile-balance" style="color:var(--warning)">PKR 0</div><div class="stat-label">Balance Due</div></div>
+<div class="stat-box"><div class="stat-value" id="profile-paid" style="color:var(--success)">PKR 0</div><div class="stat-label">Total Paid</div></div>
+<div class="stat-box"><div class="stat-value" id="profile-rate">-</div><div class="stat-label">Last Rate</div></div>
+</div>
+<button class="btn-primary" style="margin-top:1rem;" onclick="openPaymentModal()">Record Payment</button>
+</div>
+<div class="tabs-row"><button class="tab-btn active" onclick="showProfileTab('visits')">Visit History</button><button class="tab-btn" onclick="showProfileTab('payments')">Payment History</button></div>
+<div id="profile-visits-tab"><div id="profile-history"></div></div>
+<div id="profile-payments-tab" style="display:none;"><div id="profile-payments"></div></div>
+</div>
+<div class="view" id="view-closing">
+<div class="page-header"><h2>Daily Closing</h2><div class="closing-controls"><button class="btn-primary" style="width:auto;padding:0.7rem 1.5rem;" onclick="openAddSessionModal()">+ Add Missed Session</button><input type="date" id="closing-date"><button class="btn-primary" style="width:auto;padding:0.7rem 1.5rem;" onclick="loadClosing()">Load Report</button></div></div>
+<div id="closing-content"></div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modal-timein">
+<div class="modal">
+<div class="modal-header"><h2>Start Session — <span id="tin-resource"></span></h2><button class="modal-close" onclick="closeModal('modal-timein')">&times;</button></div>
+<div class="modal-body">
+<div class="form-group"><label class="form-label">Bill To (Primary Customer)</label><div style="position:relative;"><input type="text" class="form-input" id="tin-customer-search" placeholder="Search existing customer or type new name..." autocomplete="off"><div class="player-dropdown" id="tin-customer-dropdown"></div></div></div>
+<div class="form-group"><label class="form-label">Number of Players</label><div class="radio-group"><div class="radio-btn active" data-value="2" onclick="selectPlayers(2)">2 Players</div><div class="radio-btn" data-value="4" onclick="selectPlayers(4)">4 Players</div></div></div>
+<div class="form-group"><label class="form-label">Players <small style="color:var(--text-muted);font-weight:400;">(select from customers or type guest name)</small></label><div id="player-slots"></div></div>
+<div class="form-group" id="tin-extra-group" style="display:none;"><label class="form-label">Extra Charge (4 players) — PKR</label><input type="number" class="form-input" id="tin-extra" value="100" min="0" step="1"></div>
+<div class="form-group"><label class="form-label">Rate per Minute — PKR</label><input type="number" class="form-input" id="tin-rate" value="10" min="0" step="1"></div>
+<button class="btn-primary" onclick="confirmTimeIn()">Start Session</button>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modal-timeout">
+<div class="modal">
+<div class="modal-header"><h2>End Session — <span id="tout-resource"></span></h2><button class="modal-close" onclick="closeModal('modal-timeout')">&times;</button></div>
+<div class="modal-body">
+<div class="bill-summary">
+<div class="bill-row"><span class="info-label">Bill To</span><span id="tout-customer" class="info-value"></span></div>
+<div class="bill-row"><span class="info-label">Players</span><span id="tout-players" class="info-value"></span></div>
+<div class="bill-row"><span class="info-label">Time In</span><span id="tout-start" class="info-value"></span></div>
+<div class="bill-row"><span class="info-label">Time Out</span><span id="tout-end" class="info-value"></span></div>
+<div class="bill-row"><span class="info-label">Duration</span><span id="tout-duration" class="info-value"></span></div>
+<div class="bill-row"><span class="info-label">Rate</span><span id="tout-rate" class="info-value"></span></div>
+<div class="bill-row" id="tout-extra-row" style="display:none;"><span class="info-label">Extra Charge</span><span id="tout-extra" class="info-value"></span></div>
+<div class="bill-row total"><span>Total Bill</span><span id="tout-total"></span></div>
+</div>
+<div class="toggle-row"><span class="toggle-label">🏆 Loser Pays</span><div class="toggle-switch" id="loser-toggle" onclick="toggleLoserPays()"></div></div>
+<div class="loser-section" id="loser-section" style="display:none;"><h4>Select who lost (bill goes to this player)</h4><div id="loser-options"></div></div>
+<div class="form-group"><label class="form-label">Payment Status</label><div class="radio-group"><div class="radio-btn" data-value="paid" onclick="selectPaymentStatus('paid')">Paid</div><div class="radio-btn active" data-value="pending" onclick="selectPaymentStatus('pending')">Pending</div></div></div>
+<div class="form-group" id="tout-paid-group" style="display:block;"><label class="form-label">Amount Paid (PKR)</label><input type="number" class="form-input" id="tout-paid" value="0" min="0" step="1"></div>
+<div class="form-group" id="tout-balance-group" style="display:block;"><label class="form-label">Remaining Balance (PKR)</label><input type="number" class="form-input" id="tout-balance" readonly></div>
+<button class="btn-primary" onclick="confirmTimeOut()">Confirm & Close</button>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modal-add-customer">
+<div class="modal">
+<div class="modal-header"><h2>Add New Customer</h2><button class="modal-close" onclick="closeModal('modal-add-customer')">&times;</button></div>
+<div class="modal-body">
+<div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="new-customer-name" placeholder="Enter customer name"></div>
+<div class="form-group"><label class="form-label">Phone (optional)</label><input type="text" class="form-input" id="new-customer-phone" placeholder="Phone number"></div>
+<button class="btn-primary" onclick="addNewCustomer()">Add Customer</button>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modal-payment">
+<div class="modal">
+<div class="modal-header"><h2>Record Payment</h2><button class="modal-close" onclick="closeModal('modal-payment')">&times;</button></div>
+<div class="modal-body">
+<div class="form-group"><label class="form-label">Customer</label><input type="text" class="form-input" id="pay-customer" readonly></div>
+<div class="form-group"><label class="form-label">Current Balance</label><input type="text" class="form-input" id="pay-balance" readonly></div>
+<div class="form-group"><label class="form-label">Payment Amount (PKR)</label><input type="number" class="form-input" id="pay-amount" min="0" step="1"></div>
+<div class="form-group"><label class="form-label">Note (optional)</label><input type="text" class="form-input" id="pay-note" placeholder="e.g. Cash, UPI, etc."></div>
+<button class="btn-success" onclick="recordPayment()">Record Payment</button>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modal-add-session">
+<div class="modal">
+<div class="modal-header"><h2>Add Missed Session</h2><button class="modal-close" onclick="closeModal('modal-add-session')">&times;</button></div>
+<div class="modal-body">
+<div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="add-date"></div>
+<div class="form-row">
+<div class="form-group"><label class="form-label">Resource</label><select class="form-input" id="add-resource"><option value="t1">Table 1</option><option value="t2">Table 2</option><option value="t3">Table 3</option><option value="ps5">PS5 Room</option></select></div>
+<div class="form-group"><label class="form-label">Rate per Minute (PKR)</label><input type="number" class="form-input" id="add-rate" value="10" min="0" step="1"></div>
+</div>
+<div class="form-group"><label class="form-label">Bill To (Customer)</label><div style="position:relative;"><input type="text" class="form-input" id="add-customer-search" placeholder="Search customer..." autocomplete="off"><div class="player-dropdown" id="add-customer-dropdown"></div></div></div>
+<div class="form-group"><label class="form-label">Number of Players</label><div class="radio-group"><div class="radio-btn active" data-value="2" onclick="selectAddPlayers(2)">2 Players</div><div class="radio-btn" data-value="4" onclick="selectAddPlayers(4)">4 Players</div></div></div>
+<div class="form-group"><label class="form-label">Players</label><div id="add-player-slots"></div></div>
+<div class="form-group" id="add-extra-group" style="display:none;"><label class="form-label">Extra Charge (PKR)</label><input type="number" class="form-input" id="add-extra" value="100" min="0" step="1"></div>
+<div class="form-row">
+<div class="form-group"><label class="form-label">Start Time</label><input type="time" class="form-input" id="add-start-time"></div>
+<div class="form-group"><label class="form-label">End Time</label><input type="time" class="form-input" id="add-end-time"></div>
+</div>
+<div class="form-group"><label class="form-label">🏆 Loser (optional)</label><select class="form-input" id="add-loser"><option value="-1">No loser / Bill to primary customer</option></select></div>
+<div class="form-group"><label class="form-label">Payment Status</label><div class="radio-group"><div class="radio-btn active" data-value="pending" onclick="selectAddPaymentStatus('pending')">Pending</div><div class="radio-btn" data-value="paid" onclick="selectAddPaymentStatus('paid')">Paid</div></div></div>
+<div class="form-group" id="add-paid-group" style="display:none;"><label class="form-label">Amount Paid (PKR)</label><input type="number" class="form-input" id="add-paid" value="0" min="0" step="1"></div>
+<div class="bill-summary" id="add-bill-preview" style="display:none;"><div class="bill-row total"><span>Estimated Bill</span><span id="add-bill-total">PKR 0</span></div></div>
+<button class="btn-primary" onclick="confirmAddSession()">Add Session</button>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modal-backup">
+<div class="modal">
+<div class="modal-header"><h2>💾 Backup & Restore</h2><button class="modal-close" onclick="closeModal('modal-backup')">&times;</button></div>
+<div class="modal-body">
+<div id="backup-alert"></div>
+<div class="data-summary">
+<div class="sum-box"><div class="sum-value" id="sum-customers">0</div><div class="sum-label">Customers</div></div>
+<div class="sum-box"><div class="sum-value" id="sum-sessions">0</div><div class="sum-label">Sessions</div></div>
+<div class="sum-box"><div class="sum-value" id="sum-payments">0</div><div class="sum-label">Payments</div></div>
+<div class="sum-box"><div class="sum-value" id="sum-closings">0</div><div class="sum-label">Daily Reports</div></div>
+</div>
+<div class="backup-card">
+<h3>📤 Export Data (Backup)</h3>
+<p>Download all your data as a JSON file. Do this daily or weekly to keep a safe copy.</p>
+<button class="btn-success" onclick="exportData()">Download Backup File</button>
+</div>
+<div class="backup-card">
+<h3>📥 Import Data (Restore)</h3>
+<p>Load a previously exported backup file to restore all customers, sessions, and payments.</p>
+<input type="file" class="file-input" id="import-file" accept=".json" onchange="importData(this)">
+<label class="file-label" for="import-file">📁 Click to select backup file</label>
+</div>
+<div class="backup-card">
+<h3>⚠️ Clear All Data</h3>
+<p>Delete everything permanently. Make sure you export a backup first!</p>
+<button class="btn-danger" onclick="clearAllData()">Delete All Data</button>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+
+const RESOURCES = [
+    {id:'t1', name:'Table 1', type:'Snooker Table'},
+    {id:'t2', name:'Table 2', type:'Snooker Table'},
+    {id:'t3', name:'Table 3', type:'Snooker Table'},
+    {id:'ps5', name:'PS5 Room', type:'Gaming Room'}
+];
+
+let state = {
+    resources: {},
+    customers: [],
+    sessions: [],
+    payments: [],
+    dailyClosings: [],
+    currentTinResource: null,
+    currentToutResource: null,
+    selectedCustomerId: null,
+    selectedPlayers: 2,
+    paymentStatus: 'pending',
+    viewingCustomerId: null,
+    loserPays: false,
+    selectedLoserIndex: -1,
+    playerSlotsData: [],
+    toutCalc: null
+};
+
+function loadData() {
+    try {
+        const data = localStorage.getItem('snookerClubData');
+        if (data) {
+            const parsed = JSON.parse(data);
+            state.customers = parsed.customers || [];
+            state.sessions = parsed.sessions || [];
+            state.payments = parsed.payments || [];
+            state.dailyClosings = parsed.dailyClosings || [];
+        }
+    } catch (e) {
+        console.error('Load error:', e);
+    }
+    RESOURCES.forEach(r => {
+        const active = state.sessions.find(s => s.resourceId === r.id && !s.endTime);
+        state.resources[r.id] = active ? active : null;
+    });
+}
+
+function saveData() {
+    localStorage.setItem('snookerClubData', JSON.stringify({
+        customers: state.customers,
+        sessions: state.sessions,
+        payments: state.payments,
+        dailyClosings: state.dailyClosings
+    }));
+}
+
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function formatCurrency(n) {
+    return 'PKR ' + Math.round(n || 0).toLocaleString();
+}
+
+function formatTime(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+function formatDate(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString();
+}
+
+function formatDuration(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0) return h + 'h ' + m + 'm';
+    return m + 'm';
+}
+
+function getToday() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function roundUpMinutes(ms) {
+    return Math.ceil(ms / 60000);
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escapeJs(str) {
+    if (!str) return '';
+    return str.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/\n/g,'\\n');
+}
+
+// ===================== NAVIGATION =====================
+function showView(viewName) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('view-' + viewName).classList.add('active');
+    const tabBtn = document.querySelector('[data-view="' + viewName + '"]');
+    if (tabBtn) tabBtn.classList.add('active');
+    if (viewName === 'dashboard') renderDashboard();
+    if (viewName === 'customers') renderCustomers();
+    if (viewName === 'closing') {
+        document.getElementById('closing-date').value = getToday();
+        loadClosing();
+    }
+}
+
+document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => showView(tab.dataset.view));
+});
+
+// ===================== DASHBOARD =====================
+function renderDashboard() {
+    const grid = document.getElementById('resource-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    RESOURCES.forEach(res => {
+        const session = state.resources[res.id];
+        const isActive = !!session;
+        const card = document.createElement('div');
+        card.className = 'resource-card ' + (isActive ? 'in-use' : 'available');
+        card.onclick = () => isActive ? openTimeOut(res.id) : openTimeIn(res.id);
+
+        let html = '<div class="status-badge ' + (isActive ? 'in-use' : 'available') + '">' + (isActive ? 'In Use' : 'Available') + '</div>';
+        html += '<div class="resource-name">' + escapeHtml(res.name) + '</div>';
+        html += '<div class="resource-type">' + escapeHtml(res.type) + '</div>';
+
+        if (isActive) {
+            const customer = state.customers.find(c => c.id === session.customerId);
+            const elapsedMs = Date.now() - new Date(session.startTime).getTime();
+            const elapsedMin = roundUpMinutes(elapsedMs);
+            const currentBill = (elapsedMin * session.ratePerMin) + (session.extraCharge || 0);
+            let playersStr = '';
+            if (session.playersData && session.playersData.length) {
+                playersStr = session.playersData.map(p => {
+                    const tag = p.isGuest ? '' : '<span style="color:var(--accent)">&#9733;</span>';
+                    return tag + ' ' + escapeHtml(p.name);
+                }).join('<br>');
+            }
+            html += '<div class="resource-info">';
+            html += '<div class="info-row"><span class="info-label">Bill To</span><span class="info-value">' + escapeHtml(customer ? customer.name : 'Unknown') + '</span></div>';
+            html += '<div class="info-row"><span class="info-label">Players</span><span class="info-value">' + session.players + '</span></div>';
+            html += '<div class="info-row"><span class="info-label">Rate</span><span class="info-value">PKR ' + session.ratePerMin + '/min</span></div>';
+            html += '<div class="running-timer" id="timer-' + res.id + '">' + formatDuration(Math.floor(elapsedMs / 60000)) + '</div>';
+            html += '<div class="running-bill" id="bill-' + res.id + '">' + formatCurrency(currentBill) + '</div>';
+            if (playersStr) html += '<div class="players-on-card">' + playersStr + '</div>';
+            html += '</div>';
+            html += '<button class="action-btn btn-stop" onclick="event.stopPropagation(); openTimeOut(\'' + res.id + '\')">Time Out</button>';
+        } else {
+            html += '<button class="action-btn btn-start" onclick="event.stopPropagation(); openTimeIn(\'' + res.id + '\')">Time In</button>';
+        }
+        card.innerHTML = html;
+        grid.appendChild(card);
+    });
+}
+
+function updateTimers() {
+    RESOURCES.forEach(res => {
+        const session = state.resources[res.id];
+        if (!session) return;
+        const timerEl = document.getElementById('timer-' + res.id);
+        const billEl = document.getElementById('bill-' + res.id);
+        if (!timerEl || !billEl) return;
+        const elapsedMs = Date.now() - new Date(session.startTime).getTime();
+        const elapsedMin = roundUpMinutes(elapsedMs);
+        const currentBill = (elapsedMin * session.ratePerMin) + (session.extraCharge || 0);
+        timerEl.textContent = formatDuration(Math.floor(elapsedMs / 60000));
+        billEl.textContent = formatCurrency(currentBill);
+    });
+}
+setInterval(updateTimers, 1000);
+
+// ===================== TIME IN =====================
+function openTimeIn(resourceId) {
+    state.currentTinResource = resourceId;
+    state.selectedCustomerId = null;
+    state.playerSlotsData = [];
+    const res = RESOURCES.find(r => r.id === resourceId);
+    document.getElementById('tin-resource').textContent = res ? res.name : resourceId;
+    document.getElementById('tin-customer-search').value = '';
+    document.getElementById('tin-rate').value = '10';
+    selectPlayers(2);
+    document.getElementById('modal-timein').classList.add('active');
+}
+
+function selectPlayers(n) {
+    state.selectedPlayers = n;
+    document.querySelectorAll('#modal-timein .radio-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.value) === n);
+    });
+    document.getElementById('tin-extra-group').style.display = (n === 4) ? 'block' : 'none';
+    renderPlayerSlots(n);
+}
+
+function renderPlayerSlots(count) {
+    const container = document.getElementById('player-slots');
+    if (!container) return;
+    container.innerHTML = '';
+    state.playerSlotsData = [];
+    for (let i = 0; i < count; i++) {
+        state.playerSlotsData.push({name: '', customerId: null, isGuest: true});
+        const div = document.createElement('div');
+        div.className = 'player-slot';
+        div.innerHTML = '<div class="player-num">' + (i+1) + '</div>' +
+            '<div class="player-input-wrap">' +
+            '<input type="text" class="form-input player-name-input" data-index="' + i + '" placeholder="Search customer or type guest name..." autocomplete="off" style="background:transparent;border:none;padding:0;">' +
+            '<div class="player-dropdown" id="player-dd-' + i + '"></div>' +
+            '</div>' +
+            '<div class="player-tag guest" id="player-tag-' + i + '">Guest</div>';
+        container.appendChild(div);
+    }
+    setTimeout(() => {
+        document.querySelectorAll('.player-name-input').forEach(inp => {
+            inp.addEventListener('input', (e) => handlePlayerSearch(parseInt(e.target.dataset.index), e.target.value));
+            inp.addEventListener('blur', (e) => setTimeout(() => closePlayerDropdown(parseInt(e.target.dataset.index)), 200));
+            inp.addEventListener('focus', (e) => {
+                const idx = parseInt(e.target.dataset.index);
+                if (e.target.value.trim()) handlePlayerSearch(idx, e.target.value);
+            });
+        });
+    }, 10);
+}
+
+function handlePlayerSearch(index, query) {
+    const dd = document.getElementById('player-dd-' + index);
+    if (!dd) return;
+    const q = (query || '').toLowerCase().trim();
+    dd.innerHTML = '';
+    if (!q) { dd.classList.remove('active'); return; }
+    const matches = state.customers.filter(c => c.name.toLowerCase().includes(q));
+    if (matches.length === 0) {
+        dd.innerHTML = '<div class="dd-item dd-add" onclick="setPlayerGuest(' + index + ', \'' + escapeJs(q) + '\')">+ "' + escapeHtml(q) + '" as Guest</div>' +
+            '<div class="dd-item dd-add" onclick="createPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+    } else {
+        matches.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'dd-item';
+            div.innerHTML = '<span>' + escapeHtml(c.name) + '</span><span class="dd-guest">Customer</span>';
+            div.onclick = () => setPlayerCustomer(index, c.id, c.name);
+            dd.appendChild(div);
+        });
+        dd.innerHTML += '<div class="dd-item dd-add" onclick="setPlayerGuest(' + index + ', \'' + escapeJs(q) + '\')">+ "' + escapeHtml(q) + '" as Guest</div>' +
+            '<div class="dd-item dd-add" onclick="createPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+    }
+    dd.classList.add('active');
+}
+
+function closePlayerDropdown(index) {
+    const dd = document.getElementById('player-dd-' + index);
+    if (dd) dd.classList.remove('active');
+}
+
+function setPlayerCustomer(index, customerId, name) {
+    state.playerSlotsData[index] = {name: name, customerId: customerId, isGuest: false};
+    const inp = document.querySelector('.player-name-input[data-index="' + index + '"]');
+    const tag = document.getElementById('player-tag-' + index);
+    if (inp) inp.value = name;
+    if (tag) { tag.textContent = 'Customer'; tag.className = 'player-tag'; }
+    closePlayerDropdown(index);
+    if (index === 0 && !state.selectedCustomerId) {
+        state.selectedCustomerId = customerId;
+        document.getElementById('tin-customer-search').value = name;
+        const c = state.customers.find(x => x.id === customerId);
+        if (c && c.lastRate) document.getElementById('tin-rate').value = c.lastRate;
+    }
+}
+
+function setPlayerGuest(index, name) {
+    state.playerSlotsData[index] = {name: name, customerId: null, isGuest: true};
+    const inp = document.querySelector('.player-name-input[data-index="' + index + '"]');
+    const tag = document.getElementById('player-tag-' + index);
+    if (inp) inp.value = name;
+    if (tag) { tag.textContent = 'Guest'; tag.className = 'player-tag guest'; }
+    closePlayerDropdown(index);
+}
+
+function createPlayerCustomer(index, name) {
+    const customer = {
+        id: generateId(),
+        name: name,
+        phone: '',
+        visits: 0,
+        balance: 0,
+        totalPaid: 0,
+        lastRate: null,
+        wins: 0,
+        losses: 0
+    };
+    state.customers.push(customer);
+    saveData();
+    setPlayerCustomer(index, customer.id, name);
+}
+
+// Primary customer search
+const customerSearch = document.getElementById('tin-customer-search');
+const customerDropdown = document.getElementById('tin-customer-dropdown');
+if (customerSearch) {
+    customerSearch.addEventListener('input', () => {
+        const q = (customerSearch.value || '').toLowerCase().trim();
+        customerDropdown.innerHTML = '';
+        if (!q) { customerDropdown.classList.remove('active'); return; }
+        const matches = state.customers.filter(c => c.name.toLowerCase().includes(q));
+        if (matches.length === 0) {
+            customerDropdown.innerHTML = '<div class="dd-item dd-add" onclick="createPrimaryCustomer(\'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+        } else {
+            matches.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'dd-item';
+                div.innerHTML = '<span>' + escapeHtml(c.name) + '</span><span class="dd-guest">Select</span>';
+                div.onclick = () => {
+                    state.selectedCustomerId = c.id;
+                    customerSearch.value = c.name;
+                    if (c.lastRate) document.getElementById('tin-rate').value = c.lastRate;
+                    const firstInp = document.querySelector('.player-name-input[data-index="0"]');
+                    if (firstInp && !firstInp.value) setPlayerCustomer(0, c.id, c.name);
+                    customerDropdown.classList.remove('active');
+                };
+                customerDropdown.appendChild(div);
+            });
+            customerDropdown.innerHTML += '<div class="dd-item dd-add" onclick="createPrimaryCustomer(\'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+        }
+        customerDropdown.classList.add('active');
+    });
+    customerSearch.addEventListener('blur', () => setTimeout(() => customerDropdown.classList.remove('active'), 200));
+}
+
+function createPrimaryCustomer(name) {
+    const customer = {
+        id: generateId(),
+        name: name,
+        phone: '',
+        visits: 0,
+        balance: 0,
+        totalPaid: 0,
+        lastRate: null,
+        wins: 0,
+        losses: 0
+    };
+    state.customers.push(customer);
+    state.selectedCustomerId = customer.id;
+    if (customerSearch) customerSearch.value = name;
+    saveData();
+    setPlayerCustomer(0, customer.id, name);
+}
+
+function confirmTimeIn() {
+    if (!state.selectedCustomerId) {
+        alert('Please select a primary customer (Bill To)');
+        return;
+    }
+    const emptyPlayer = state.playerSlotsData.findIndex(p => !p.name.trim());
+    if (emptyPlayer !== -1) {
+        alert('Please enter a name for Player ' + (emptyPlayer + 1));
+        return;
+    }
+    const rate = parseFloat(document.getElementById('tin-rate').value) || 0;
+    const extra = state.selectedPlayers === 4 ? (parseFloat(document.getElementById('tin-extra').value) || 0) : 0;
+    const session = {
+        id: generateId(),
+        resourceId: state.currentTinResource,
+        customerId: state.selectedCustomerId,
+        players: state.selectedPlayers,
+        playersData: JSON.parse(JSON.stringify(state.playerSlotsData)),
+        ratePerMin: rate,
+        extraCharge: extra,
+        startTime: new Date().toISOString(),
+        endTime: null,
+        duration: 0,
+        totalBill: 0,
+        paidAmount: 0,
+        status: 'active',
+        date: getToday(),
+        loserIndex: -1,
+        loserPays: false
+    };
+    state.sessions.push(session);
+    state.resources[state.currentTinResource] = session;
+    const cust = state.customers.find(c => c.id === state.selectedCustomerId);
+    if (cust) cust.lastRate = rate;
+    saveData();
+    closeModal('modal-timein');
+    renderDashboard();
+}
+
+// ===================== TIME OUT =====================
+function openTimeOut(resourceId) {
+    state.currentToutResource = resourceId;
+    state.loserPays = false;
+    state.selectedLoserIndex = -1;
+    const session = state.resources[resourceId];
+    if (!session) return;
+    const res = RESOURCES.find(r => r.id === resourceId);
+    const customer = state.customers.find(c => c.id === session.customerId);
+    const endTime = new Date();
+    const startTime = new Date(session.startTime);
+    const durationMin = roundUpMinutes(endTime - startTime);
+    const totalBill = (durationMin * session.ratePerMin) + (session.extraCharge || 0);
+    const playersStr = session.playersData ? session.playersData.map(p => p.name).join(', ') : '';
+
+    // Set calc BEFORE selectPaymentStatus (which reads state.toutCalc)
+    state.toutCalc = {endTime: endTime.toISOString(), durationMin: durationMin, totalBill: totalBill};
+
+    document.getElementById('tout-resource').textContent = res ? res.name : resourceId;
+    document.getElementById('tout-customer').textContent = customer ? customer.name : 'Unknown';
+    document.getElementById('tout-players').textContent = session.players + ' — ' + playersStr;
+    document.getElementById('tout-start').textContent = formatTime(session.startTime);
+    document.getElementById('tout-end').textContent = formatTime(endTime);
+    document.getElementById('tout-duration').textContent = formatDuration(durationMin);
+    document.getElementById('tout-rate').textContent = 'PKR ' + session.ratePerMin + '/min';
+    document.getElementById('tout-total').textContent = formatCurrency(totalBill);
+
+    const extraRow = document.getElementById('tout-extra-row');
+    if (session.extraCharge > 0) {
+        extraRow.style.display = 'flex';
+        document.getElementById('tout-extra').textContent = formatCurrency(session.extraCharge);
+    } else {
+        extraRow.style.display = 'none';
+    }
+
+    const loserSection = document.getElementById('loser-section');
+    const loserOptions = document.getElementById('loser-options');
+    loserOptions.innerHTML = '';
+    if (session.playersData) {
+        session.playersData.forEach((p, i) => {
+            const isCustomer = !p.isGuest && p.customerId;
+            const div = document.createElement('div');
+            div.className = 'loser-option';
+            div.dataset.index = i;
+            div.innerHTML = '<input type="radio" name="loser" value="' + i + '"><span class="loser-name">' + escapeHtml(p.name) + '</span><span class="loser-tag">' + (isCustomer ? 'Customer' : 'Guest') + '</span>';
+            div.onclick = () => selectLoser(i);
+            loserOptions.appendChild(div);
+        });
+    }
+
+    const toggle = document.getElementById('loser-toggle');
+    if (toggle) toggle.classList.remove('on');
+    if (loserSection) loserSection.style.display = 'none';
+
+    selectPaymentStatus('pending');
+    document.getElementById('tout-paid').value = '0';
+    document.getElementById('tout-balance').value = totalBill.toFixed(0);
+    document.getElementById('modal-timeout').classList.add('active');
+}
+
+function toggleLoserPays() {
+    const toggle = document.getElementById('loser-toggle');
+    state.loserPays = !state.loserPays;
+    if (toggle) toggle.classList.toggle('on', state.loserPays);
+    const section = document.getElementById('loser-section');
+    if (section) section.style.display = state.loserPays ? 'block' : 'none';
+}
+
+function selectLoser(index) {
+    state.selectedLoserIndex = index;
+    document.querySelectorAll('.loser-option').forEach((el, i) => {
+        el.classList.toggle('selected', i === index);
+        const inp = el.querySelector('input');
+        if (inp) inp.checked = (i === index);
+    });
+}
+
+function selectPaymentStatus(status) {
+    state.paymentStatus = status;
+    document.querySelectorAll('#modal-timeout .radio-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.value === status);
+    });
+    const paidInput = document.getElementById('tout-paid');
+    const total = state.toutCalc ? state.toutCalc.totalBill : 0;
+    if (status === 'paid') {
+        paidInput.value = total.toFixed(0);
+        document.getElementById('tout-balance').value = '0';
+    } else {
+        paidInput.value = '0';
+        document.getElementById('tout-balance').value = total.toFixed(0);
+    }
+}
+
+const toutPaidInput = document.getElementById('tout-paid');
+if (toutPaidInput) {
+    toutPaidInput.addEventListener('input', function() {
+        const total = state.toutCalc ? state.toutCalc.totalBill : 0;
+        const paid = parseFloat(this.value) || 0;
+        document.getElementById('tout-balance').value = Math.max(0, total - paid).toFixed(0);
+        if (paid >= total) {
+            selectPaymentStatus('paid');
+        } else if (paid > 0) {
+            state.paymentStatus = 'partial';
+            document.querySelectorAll('#modal-timeout .radio-btn').forEach(b => b.classList.remove('active'));
+        } else {
+            selectPaymentStatus('pending');
+        }
+    });
+}
+
+function confirmTimeOut() {
+    const session = state.resources[state.currentToutResource];
+    if (!session) return;
+    const calc = state.toutCalc;
+    session.endTime = calc.endTime;
+    session.duration = calc.durationMin;
+    session.totalBill = calc.totalBill;
+
+    const paid = parseFloat(document.getElementById('tout-paid').value) || 0;
+    session.paidAmount = paid;
+    if (paid >= calc.totalBill) session.status = 'paid';
+    else if (paid > 0) session.status = 'partial';
+    else session.status = 'pending';
+
+    let billCustomerId = session.customerId;
+    session.loserPays = state.loserPays;
+    session.loserIndex = -1;
+
+    if (state.loserPays && state.selectedLoserIndex >= 0) {
+        session.loserIndex = state.selectedLoserIndex;
+        const loser = session.playersData[state.selectedLoserIndex];
+        if (loser && loser.customerId) {
+            billCustomerId = loser.customerId;
+        }
+    }
+    session.billCustomerId = billCustomerId;
+
+    // Win/Loss records
+    if (state.loserPays && state.selectedLoserIndex >= 0) {
+        session.playersData.forEach((p, i) => {
+            if (p.customerId) {
+                const c = state.customers.find(x => x.id === p.customerId);
+                if (c) {
+                    if (i === state.selectedLoserIndex) {
+                        c.losses = (c.losses || 0) + 1;
+                    } else {
+                        c.wins = (c.wins || 0) + 1;
+                    }
+                }
+            }
+        });
+    }
+
+    // Update billing customer
+    const billCustomer = state.customers.find(c => c.id === billCustomerId);
+    if (billCustomer) {
+        billCustomer.visits = (billCustomer.visits || 0) + 1;
+        if (session.status !== 'paid') {
+            billCustomer.balance = (billCustomer.balance || 0) + (calc.totalBill - session.paidAmount);
+        }
+        billCustomer.totalPaid = (billCustomer.totalPaid || 0) + session.paidAmount;
+    }
+
+    // Update primary customer visits if different
+    if (billCustomerId !== session.customerId) {
+        const primary = state.customers.find(c => c.id === session.customerId);
+        if (primary) primary.visits = (primary.visits || 0) + 1;
+    }
+
+    updateDailyClosing(session);
+    state.resources[state.currentToutResource] = null;
+    saveData();
+    closeModal('modal-timeout');
+    renderDashboard();
+}
+
+function updateDailyClosing(session) {
+    let closing = state.dailyClosings.find(c => c.date === session.date);
+    if (!closing) {
+        closing = {date: session.date, sessions: [], totalRevenue: 0, totalPending: 0, breakdown: {}};
+        state.dailyClosings.push(closing);
+    }
+    closing.sessions.push(session.id);
+    closing.totalRevenue += session.paidAmount;
+    if (session.status !== 'paid') {
+        closing.totalPending += (session.totalBill - session.paidAmount);
+    }
+    closing.breakdown[session.resourceId] = (closing.breakdown[session.resourceId] || 0) + 1;
+}
+
+// ===================== CUSTOMERS =====================
+function openAddCustomer(prefillName) {
+    document.getElementById('new-customer-name').value = prefillName || '';
+    document.getElementById('new-customer-phone').value = '';
+    document.getElementById('modal-add-customer').classList.add('active');
+}
+
+function addNewCustomer() {
+    const name = document.getElementById('new-customer-name').value.trim();
+    if (!name) { alert('Please enter a name'); return; }
+    const customer = {
+        id: generateId(),
+        name: name,
+        phone: document.getElementById('new-customer-phone').value.trim(),
+        visits: 0,
+        balance: 0,
+        totalPaid: 0,
+        lastRate: null,
+        wins: 0,
+        losses: 0
+    };
+    state.customers.push(customer);
+    saveData();
+    closeModal('modal-add-customer');
+    if (state.currentTinResource) {
+        state.selectedCustomerId = customer.id;
+        document.getElementById('tin-customer-search').value = customer.name;
+        setPlayerCustomer(0, customer.id, customer.name);
+    }
+}
+
+function renderCustomers() {
+    const list = document.getElementById('customer-list');
+    if (!list) return;
+    const q = (document.getElementById('customer-search').value || '').toLowerCase().trim();
+    let customers = [...state.customers].sort((a, b) => a.name.localeCompare(b.name));
+    if (q) customers = customers.filter(c => c.name.toLowerCase().includes(q));
+
+    if (customers.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👤</div><p>No customers found</p></div>';
+        return;
+    }
+    list.innerHTML = customers.map(c => {
+        const pendingSessions = state.sessions.filter(s => s.billCustomerId === c.id && s.status !== 'paid').length;
+        return '<div class="customer-item" onclick="viewCustomer(\'' + c.id + '\')">' +
+            '<div><div class="customer-name">' + escapeHtml(c.name) + '</div>' +
+            '<div class="customer-meta">' + (c.visits || 0) + ' visits · Last rate: ' + (c.lastRate ? 'PKR ' + c.lastRate + '/min' : '-') + '</div>' +
+            '<div class="wl-badge"><span class="wl-win">' + (c.wins || 0) + 'W</span><span class="wl-loss">' + (c.losses || 0) + 'L</span></div></div>' +
+            '<div class="customer-balance ' + ((c.balance || 0) > 0 ? '' : 'paid') + '">' +
+            ((c.balance || 0) > 0 ? formatCurrency(c.balance) + ' due' : 'Paid up') +
+            (pendingSessions > 0 ? '<small>' + pendingSessions + ' pending bill' + (pendingSessions > 1 ? 's' : '') + '</small>' : '') +
+            '</div></div>';
+    }).join('');
+}
+
+const customerSearchInput = document.getElementById('customer-search');
+if (customerSearchInput) {
+    customerSearchInput.addEventListener('input', renderCustomers);
+}
+
+function showProfileTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const btn = document.querySelector('[onclick="showProfileTab(\'' + tab + '\')"]');
+    if (btn) btn.classList.add('active');
+    document.getElementById('profile-visits-tab').style.display = (tab === 'visits') ? 'block' : 'none';
+    document.getElementById('profile-payments-tab').style.display = (tab === 'payments') ? 'block' : 'none';
+}
+
+function viewCustomer(id) {
+    state.viewingCustomerId = id;
+    const c = state.customers.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('profile-name').textContent = c.name;
+    document.getElementById('profile-visits').textContent = c.visits || 0;
+    document.getElementById('profile-wins').textContent = c.wins || 0;
+    document.getElementById('profile-losses').textContent = c.losses || 0;
+    document.getElementById('profile-balance').textContent = formatCurrency(c.balance || 0);
+    document.getElementById('profile-paid').textContent = formatCurrency(c.totalPaid || 0);
+    document.getElementById('profile-rate').textContent = c.lastRate ? 'PKR ' + c.lastRate : '-';
+
+    // Visit history
+    const history = state.sessions.filter(s => {
+        if (s.customerId === id) return true;
+        if (s.playersData && s.playersData.some(p => p.customerId === id)) return true;
+        return false;
+    }).sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+
+    const histDiv = document.getElementById('profile-history');
+    if (history.length === 0) {
+        histDiv.innerHTML = '<div class="empty-state"><p>No visit history</p></div>';
+    } else {
+        let html = '<table class="history-table"><thead><tr><th>Date</th><th>Resource</th><th>Players</th><th>Duration</th><th>Bill</th><th>Paid</th><th>Status</th><th>Result</th></tr></thead><tbody>';
+        history.forEach(s => {
+            const res = RESOURCES.find(r => r.id === s.resourceId);
+            const statusClass = s.status === 'paid' ? 'badge-paid' : (s.status === 'partial' ? 'badge-partial' : 'badge-pending');
+            const playersStr = s.playersData ? s.playersData.map(p => p.name).join(', ') : (s.players + ' players');
+            let resultBadge = '-';
+            if (s.loserPays && s.playersData) {
+                const myIndex = s.playersData.findIndex(p => p.customerId === id);
+                if (myIndex >= 0) {
+                    resultBadge = myIndex === s.loserIndex ? '<span class="badge badge-loss">LOSS</span>' : '<span class="badge badge-win">WIN</span>';
+                }
+            }
+            html += '<tr><td>' + formatDate(s.startTime) + '</td><td>' + (res ? res.name : s.resourceId) + '</td><td>' + escapeHtml(playersStr) + '</td><td>' + formatDuration(s.duration) + '</td><td>' + formatCurrency(s.totalBill) + '</td><td>' + formatCurrency(s.paidAmount) + '</td><td><span class="badge ' + statusClass + '">' + s.status + '</span></td><td>' + resultBadge + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        histDiv.innerHTML = html;
+    }
+
+    // Payment history
+    const payments = state.payments.filter(p => p.customerId === id).sort((a, b) => new Date(b.date) - new Date(a.date));
+    const payDiv = document.getElementById('profile-payments');
+    if (payments.length === 0) {
+        payDiv.innerHTML = '<div class="empty-state"><p>No payment history</p></div>';
+    } else {
+        payDiv.innerHTML = payments.map(p => {
+            return '<div class="payment-history-item"><div><div class="pay-date">' + formatDate(p.date) + ' · ' + formatTime(p.date) + '</div>' + (p.note ? '<div class="pay-note">' + escapeHtml(p.note) + '</div>' : '') + '</div><div class="pay-amount">' + formatCurrency(p.amount) + '</div></div>';
+        }).join('');
+    }
+
+    showProfileTab('visits');
+    showView('customer-profile');
+}
+
+function openPaymentModal() {
+    const c = state.customers.find(x => x.id === state.viewingCustomerId);
+    if (!c) return;
+    document.getElementById('pay-customer').value = c.name;
+    document.getElementById('pay-balance').value = formatCurrency(c.balance || 0);
+    document.getElementById('pay-amount').value = Math.round(c.balance || 0);
+    document.getElementById('pay-note').value = '';
+    document.getElementById('modal-payment').classList.add('active');
+}
+
+function recordPayment() {
+    const c = state.customers.find(x => x.id === state.viewingCustomerId);
+    if (!c) return;
+    const amount = parseFloat(document.getElementById('pay-amount').value) || 0;
+    if (amount <= 0) { alert('Enter a valid amount'); return; }
+    const note = document.getElementById('pay-note').value.trim();
+    const payment = {
+        id: generateId(),
+        customerId: c.id,
+        amount: amount,
+        note: note,
+        date: new Date().toISOString()
+    };
+    state.payments.push(payment);
+    c.balance = Math.max(0, (c.balance || 0) - amount);
+    c.totalPaid = (c.totalPaid || 0) + amount;
+
+    let closing = state.dailyClosings.find(cl => cl.date === getToday());
+    if (closing) {
+        closing.totalRevenue += amount;
+    } else {
+        state.dailyClosings.push({date: getToday(), sessions: [], totalRevenue: amount, totalPending: 0, breakdown: {}});
+    }
+
+    saveData();
+    closeModal('modal-payment');
+    viewCustomer(c.id);
+}
+
+// ===================== DAILY CLOSING =====================
+function loadClosing() {
+    const date = document.getElementById('closing-date').value;
+    const closing = state.dailyClosings.find(c => c.date === date);
+    const container = document.getElementById('closing-content');
+    if (!closing || closing.sessions.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><p>No sessions recorded for ' + date + '</p></div>';
+        return;
+    }
+
+    const daySessions = state.sessions.filter(s => closing.sessions.includes(s.id));
+    const dayPayments = state.payments.filter(p => p.date.startsWith(date));
+
+    let html = '<div class="summary-cards">' +
+        '<div class="summary-card"><h3>Total Sessions</h3><div class="value sessions">' + closing.sessions.length + '</div></div>' +
+        '<div class="summary-card"><h3>Revenue Collected</h3><div class="value revenue">' + formatCurrency(closing.totalRevenue) + '</div></div>' +
+        '<div class="summary-card"><h3>Outstanding</h3><div class="value pending">' + formatCurrency(closing.totalPending) + '</div></div>' +
+        '</div>';
+
+    html += '<h3 class="section-title">Breakdown by Resource</h3><div class="summary-cards">';
+    RESOURCES.forEach(r => {
+        html += '<div class="summary-card"><h3>' + r.name + '</h3><div class="value">' + (closing.breakdown[r.id] || 0) + ' sessions</div></div>';
+    });
+    html += '</div>';
+
+    if (daySessions.length > 0) {
+        html += '<h3 class="section-title">All Sessions</h3><table class="history-table"><thead><tr><th>Time</th><th>Resource</th><th>Customer</th><th>Players</th><th>Duration</th><th>Bill</th><th>Paid</th><th>Status</th></tr></thead><tbody>';
+        daySessions.forEach(s => {
+            const res = RESOURCES.find(r => r.id === s.resourceId);
+            const cust = state.customers.find(c => c.id === s.billCustomerId);
+            const statusClass = s.status === 'paid' ? 'badge-paid' : (s.status === 'partial' ? 'badge-partial' : 'badge-pending');
+            const playersStr = s.playersData ? s.playersData.map(p => p.name).join(', ') : (s.players + ' players');
+            html += '<tr><td>' + formatTime(s.startTime) + '</td><td>' + (res ? res.name : s.resourceId) + '</td><td>' + escapeHtml(cust ? cust.name : 'Unknown') + '</td><td>' + escapeHtml(playersStr) + '</td><td>' + formatDuration(s.duration) + '</td><td>' + formatCurrency(s.totalBill) + '</td><td>' + formatCurrency(s.paidAmount) + '</td><td><span class="badge ' + statusClass + '">' + s.status + '</span></td></tr>';
+        });
+        html += '</tbody></table>';
+    }
+
+    if (dayPayments.length > 0) {
+        html += '<h3 class="section-title">Payments Received Today</h3><table class="history-table"><thead><tr><th>Time</th><th>Customer</th><th>Amount</th><th>Note</th></tr></thead><tbody>';
+        dayPayments.forEach(p => {
+            const cust = state.customers.find(c => c.id === p.customerId);
+            html += '<tr><td>' + formatTime(p.date) + '</td><td>' + escapeHtml(cust ? cust.name : 'Unknown') + '</td><td>' + formatCurrency(p.amount) + '</td><td>' + escapeHtml(p.note || '-') + '</td></tr>';
+        });
+        html += '</tbody></table>';
+    }
+    container.innerHTML = html;
+}
+
+// ===================== BACKUP & RESTORE =====================
+function openBackupModal() {
+    document.getElementById('sum-customers').textContent = state.customers.length;
+    document.getElementById('sum-sessions').textContent = state.sessions.length;
+    document.getElementById('sum-payments').textContent = state.payments.length;
+    document.getElementById('sum-closings').textContent = state.dailyClosings.length;
+    document.getElementById('backup-alert').innerHTML = '';
+    document.getElementById('modal-backup').classList.add('active');
+}
+
+function exportData() {
+    const data = {
+        customers: state.customers,
+        sessions: state.sessions,
+        payments: state.payments,
+        dailyClosings: state.dailyClosings,
+        exportedAt: new Date().toISOString(),
+        version: '1.0'
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = 'snooker-club-backup-' + dateStr + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showBackupAlert('Backup downloaded successfully!', 'success');
+}
+
+function importData(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!data.customers || !data.sessions) {
+                showBackupAlert('Invalid backup file. Missing required data.', 'danger');
+                return;
+            }
+            if (confirm('This will REPLACE all current data with the backup. Are you sure?')) {
+                state.customers = data.customers || [];
+                state.sessions = data.sessions || [];
+                state.payments = data.payments || [];
+                state.dailyClosings = data.dailyClosings || [];
+                saveData();
+                loadData();
+                renderDashboard();
+                renderCustomers();
+                showBackupAlert('Data restored successfully! ' + state.customers.length + ' customers, ' + state.sessions.length + ' sessions loaded.', 'success');
+            }
+        } catch (err) {
+            showBackupAlert('Error reading file: ' + err.message, 'danger');
+        }
+    };
+    reader.readAsText(file);
+    input.value = '';
+}
+
+function clearAllData() {
+    if (!confirm('WARNING: This will delete ALL customers, sessions, payments, and reports permanently.\n\nMake sure you exported a backup first!\n\nAre you absolutely sure?')) return;
+    if (!confirm('Final confirmation: ALL DATA WILL BE LOST. Continue?')) return;
+    state.customers = [];
+    state.sessions = [];
+    state.payments = [];
+    state.dailyClosings = [];
+    state.resources = {};
+    saveData();
+    renderDashboard();
+    renderCustomers();
+    showBackupAlert('All data has been cleared.', 'warning');
+}
+
+function showBackupAlert(message, type) {
+    const alertBox = document.getElementById('backup-alert');
+    alertBox.innerHTML = '<div class="alert-box alert-' + type + '">' + message + '</div>';
+    setTimeout(() => { alertBox.innerHTML = ''; }, 5000);
+}
+
+// ===================== MODAL UTILS =====================
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); });
+});
+
+// ===================== ADD MISSED SESSION =====================
+let addSessionState = {
+    selectedCustomerId: null,
+    selectedPlayers: 2,
+    playerSlotsData: [],
+    paymentStatus: 'pending'
+};
+
+function openAddSessionModal() {
+    addSessionState.selectedCustomerId = null;
+    addSessionState.playerSlotsData = [];
+    addSessionState.paymentStatus = 'pending';
+    document.getElementById('add-date').value = getToday();
+    document.getElementById('add-resource').value = 't1';
+    document.getElementById('add-rate').value = '10';
+    document.getElementById('add-customer-search').value = '';
+    document.getElementById('add-start-time').value = '';
+    document.getElementById('add-end-time').value = '';
+    document.getElementById('add-paid').value = '0';
+    document.getElementById('add-paid-group').style.display = 'none';
+    document.getElementById('add-bill-preview').style.display = 'none';
+    selectAddPlayers(2);
+    selectAddPaymentStatus('pending');
+    updateAddLoserDropdown();
+    document.getElementById('modal-add-session').classList.add('active');
+}
+
+function selectAddPlayers(n) {
+    addSessionState.selectedPlayers = n;
+    document.querySelectorAll('#modal-add-session .radio-btn[data-value="2"], #modal-add-session .radio-btn[data-value="4"]').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.value) === n);
+    });
+    document.getElementById('add-extra-group').style.display = (n === 4) ? 'block' : 'none';
+    renderAddPlayerSlots(n);
+}
+
+function renderAddPlayerSlots(count) {
+    const container = document.getElementById('add-player-slots');
+    if (!container) return;
+    container.innerHTML = '';
+    addSessionState.playerSlotsData = [];
+    for (let i = 0; i < count; i++) {
+        addSessionState.playerSlotsData.push({name: '', customerId: null, isGuest: true});
+        const div = document.createElement('div');
+        div.className = 'player-slot';
+        div.innerHTML = '<div class="player-num">' + (i+1) + '</div>' +
+            '<div class="player-input-wrap">' +
+            '<input type="text" class="form-input add-player-name-input" data-index="' + i + '" placeholder="Search customer or type guest name..." autocomplete="off" style="background:transparent;border:none;padding:0;">' +
+            '<div class="player-dropdown" id="add-player-dd-' + i + '"></div>' +
+            '</div>' +
+            '<div class="player-tag guest" id="add-player-tag-' + i + '">Guest</div>';
+        container.appendChild(div);
+    }
+    setTimeout(() => {
+        document.querySelectorAll('.add-player-name-input').forEach(inp => {
+            inp.addEventListener('input', (e) => handleAddPlayerSearch(parseInt(e.target.dataset.index), e.target.value));
+            inp.addEventListener('blur', (e) => setTimeout(() => closeAddPlayerDropdown(parseInt(e.target.dataset.index)), 200));
+            inp.addEventListener('focus', (e) => {
+                const idx = parseInt(e.target.dataset.index);
+                if (e.target.value.trim()) handleAddPlayerSearch(idx, e.target.value);
+            });
+        });
+    }, 10);
+}
+
+function handleAddPlayerSearch(index, query) {
+    const dd = document.getElementById('add-player-dd-' + index);
+    if (!dd) return;
+    const q = (query || '').toLowerCase().trim();
+    dd.innerHTML = '';
+    if (!q) { dd.classList.remove('active'); return; }
+    const matches = state.customers.filter(c => c.name.toLowerCase().includes(q));
+    if (matches.length === 0) {
+        dd.innerHTML = '<div class="dd-item dd-add" onclick="setAddPlayerGuest(' + index + ', \'' + escapeJs(q) + '\')">+ "' + escapeHtml(q) + '" as Guest</div>' +
+            '<div class="dd-item dd-add" onclick="createAddPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+    } else {
+        matches.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'dd-item';
+            div.innerHTML = '<span>' + escapeHtml(c.name) + '</span><span class="dd-guest">Customer</span>';
+            div.onclick = () => setAddPlayerCustomer(index, c.id, c.name);
+            dd.appendChild(div);
+        });
+        dd.innerHTML += '<div class="dd-item dd-add" onclick="setAddPlayerGuest(' + index + ', \'' + escapeJs(q) + '\')">+ "' + escapeHtml(q) + '" as Guest</div>' +
+            '<div class="dd-item dd-add" onclick="createAddPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+    }
+    dd.classList.add('active');
+}
+
+function closeAddPlayerDropdown(index) {
+    const dd = document.getElementById('add-player-dd-' + index);
+    if (dd) dd.classList.remove('active');
+}
+
+function setAddPlayerCustomer(index, customerId, name) {
+    addSessionState.playerSlotsData[index] = {name: name, customerId: customerId, isGuest: false};
+    const inp = document.querySelector('.add-player-name-input[data-index="' + index + '"]');
+    const tag = document.getElementById('add-player-tag-' + index);
+    if (inp) inp.value = name;
+    if (tag) { tag.textContent = 'Customer'; tag.className = 'player-tag'; }
+    closeAddPlayerDropdown(index);
+    if (index === 0 && !addSessionState.selectedCustomerId) {
+        addSessionState.selectedCustomerId = customerId;
+        document.getElementById('add-customer-search').value = name;
+    }
+    updateAddLoserDropdown();
+}
+
+function setAddPlayerGuest(index, name) {
+    addSessionState.playerSlotsData[index] = {name: name, customerId: null, isGuest: true};
+    const inp = document.querySelector('.add-player-name-input[data-index="' + index + '"]');
+    const tag = document.getElementById('add-player-tag-' + index);
+    if (inp) inp.value = name;
+    if (tag) { tag.textContent = 'Guest'; tag.className = 'player-tag guest'; }
+    closeAddPlayerDropdown(index);
+    updateAddLoserDropdown();
+}
+
+function createAddPlayerCustomer(index, name) {
+    const customer = {
+        id: generateId(),
+        name: name,
+        phone: '',
+        visits: 0,
+        balance: 0,
+        totalPaid: 0,
+        lastRate: null,
+        wins: 0,
+        losses: 0
+    };
+    state.customers.push(customer);
+    saveData();
+    setAddPlayerCustomer(index, customer.id, name);
+}
+
+// Primary customer search for add session
+const addCustomerSearch = document.getElementById('add-customer-search');
+const addCustomerDropdown = document.getElementById('add-customer-dropdown');
+if (addCustomerSearch) {
+    addCustomerSearch.addEventListener('input', () => {
+        const q = (addCustomerSearch.value || '').toLowerCase().trim();
+        addCustomerDropdown.innerHTML = '';
+        if (!q) { addCustomerDropdown.classList.remove('active'); return; }
+        const matches = state.customers.filter(c => c.name.toLowerCase().includes(q));
+        if (matches.length === 0) {
+            addCustomerDropdown.innerHTML = '<div class="dd-item dd-add" onclick="createAddPrimaryCustomer(\'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+        } else {
+            matches.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'dd-item';
+                div.innerHTML = '<span>' + escapeHtml(c.name) + '</span><span class="dd-guest">Select</span>';
+                div.onclick = () => {
+                    addSessionState.selectedCustomerId = c.id;
+                    addCustomerSearch.value = c.name;
+                    const firstInp = document.querySelector('.add-player-name-input[data-index="0"]');
+                    if (firstInp && !firstInp.value) setAddPlayerCustomer(0, c.id, c.name);
+                    addCustomerDropdown.classList.remove('active');
+                };
+                addCustomerDropdown.appendChild(div);
+            });
+            addCustomerDropdown.innerHTML += '<div class="dd-item dd-add" onclick="createAddPrimaryCustomer(\'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+        }
+        addCustomerDropdown.classList.add('active');
+    });
+    addCustomerSearch.addEventListener('blur', () => setTimeout(() => addCustomerDropdown.classList.remove('active'), 200));
+}
+
+function createAddPrimaryCustomer(name) {
+    const customer = {
+        id: generateId(),
+        name: name,
+        phone: '',
+        visits: 0,
+        balance: 0,
+        totalPaid: 0,
+        lastRate: null,
+        wins: 0,
+        losses: 0
+    };
+    state.customers.push(customer);
+    addSessionState.selectedCustomerId = customer.id;
+    if (addCustomerSearch) addCustomerSearch.value = name;
+    saveData();
+    setAddPlayerCustomer(0, customer.id, name);
+}
+
+function updateAddLoserDropdown() {
+    const select = document.getElementById('add-loser');
+    if (!select) return;
+    let html = '<option value="-1">No loser / Bill to primary customer</option>';
+    addSessionState.playerSlotsData.forEach((p, i) => {
+        if (p.name.trim()) {
+            html += '<option value="' + i + '">' + escapeHtml(p.name) + (p.isGuest ? ' (Guest)' : '') + '</option>';
+        }
+    });
+    select.innerHTML = html;
+}
+
+function selectAddPaymentStatus(status) {
+    addSessionState.paymentStatus = status;
+    document.querySelectorAll('#modal-add-session .radio-btn[data-value="pending"], #modal-add-session .radio-btn[data-value="paid"]').forEach(b => {
+        b.classList.toggle('active', b.dataset.value === status);
+    });
+    document.getElementById('add-paid-group').style.display = (status === 'paid') ? 'block' : 'none';
+    calculateAddBill();
+}
+
+function calculateAddBill() {
+    const startStr = document.getElementById('add-start-time').value;
+    const endStr = document.getElementById('add-end-time').value;
+    const rate = parseFloat(document.getElementById('add-rate').value) || 0;
+    const extra = addSessionState.selectedPlayers === 4 ? (parseFloat(document.getElementById('add-extra').value) || 0) : 0;
+
+    if (!startStr || !endStr) {
+        document.getElementById('add-bill-preview').style.display = 'none';
+        return;
+    }
+
+    const date = document.getElementById('add-date').value || getToday();
+    const start = new Date(date + 'T' + startStr);
+    const end = new Date(date + 'T' + endStr);
+
+    if (end <= start) {
+        document.getElementById('add-bill-preview').style.display = 'none';
+        return;
+    }
+
+    const durationMin = roundUpMinutes(end - start);
+    const totalBill = (durationMin * rate) + extra;
+    document.getElementById('add-bill-total').textContent = formatCurrency(totalBill);
+    document.getElementById('add-bill-preview').style.display = 'block';
+
+    if (addSessionState.paymentStatus === 'paid') {
+        document.getElementById('add-paid').value = totalBill.toFixed(0);
+    }
+}
+
+// Auto-calculate on input changes
+['add-date', 'add-start-time', 'add-end-time', 'add-rate', 'add-extra'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', calculateAddBill);
+});
+
+function confirmAddSession() {
+    if (!addSessionState.selectedCustomerId) {
+        alert('Please select a primary customer (Bill To)');
+        return;
+    }
+    const emptyPlayer = addSessionState.playerSlotsData.findIndex(p => !p.name.trim());
+    if (emptyPlayer !== -1) {
+        alert('Please enter a name for Player ' + (emptyPlayer + 1));
+        return;
+    }
+
+    const date = document.getElementById('add-date').value;
+    const startStr = document.getElementById('add-start-time').value;
+    const endStr = document.getElementById('add-end-time').value;
+
+    if (!date || !startStr || !endStr) {
+        alert('Please fill in date, start time, and end time');
+        return;
+    }
+
+    const startTime = new Date(date + 'T' + startStr);
+    const endTime = new Date(date + 'T' + endStr);
+
+    if (endTime <= startTime) {
+        alert('End time must be after start time');
+        return;
+    }
+
+    const rate = parseFloat(document.getElementById('add-rate').value) || 0;
+    const extra = addSessionState.selectedPlayers === 4 ? (parseFloat(document.getElementById('add-extra').value) || 0) : 0;
+    const durationMin = roundUpMinutes(endTime - startTime);
+    const totalBill = (durationMin * rate) + extra;
+
+    const paid = addSessionState.paymentStatus === 'paid' ? (parseFloat(document.getElementById('add-paid').value) || totalBill) : 0;
+    let status = 'pending';
+    if (paid >= totalBill) status = 'paid';
+    else if (paid > 0) status = 'partial';
+
+    const loserIndex = parseInt(document.getElementById('add-loser').value);
+    const loserPays = loserIndex >= 0;
+
+    let billCustomerId = addSessionState.selectedCustomerId;
+    if (loserPays) {
+        const loser = addSessionState.playerSlotsData[loserIndex];
+        if (loser && loser.customerId) {
+            billCustomerId = loser.customerId;
+        }
+    }
+
+    const session = {
+        id: generateId(),
+        resourceId: document.getElementById('add-resource').value,
+        customerId: addSessionState.selectedCustomerId,
+        players: addSessionState.selectedPlayers,
+        playersData: JSON.parse(JSON.stringify(addSessionState.playerSlotsData)),
+        ratePerMin: rate,
+        extraCharge: extra,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        duration: durationMin,
+        totalBill: totalBill,
+        paidAmount: paid,
+        status: status,
+        date: date,
+        loserIndex: loserIndex,
+        loserPays: loserPays,
+        billCustomerId: billCustomerId
+    };
+
+    state.sessions.push(session);
+
+    // Win/Loss records
+    if (loserPays && loserIndex >= 0) {
+        session.playersData.forEach((p, i) => {
+            if (p.customerId) {
+                const c = state.customers.find(x => x.id === p.customerId);
+                if (c) {
+                    if (i === loserIndex) {
+                        c.losses = (c.losses || 0) + 1;
+                    } else {
+                        c.wins = (c.wins || 0) + 1;
+                    }
+                }
+            }
+        });
+    }
+
+    // Update billing customer
+    const billCustomer = state.customers.find(c => c.id === billCustomerId);
+    if (billCustomer) {
+        billCustomer.visits = (billCustomer.visits || 0) + 1;
+        if (status !== 'paid') {
+            billCustomer.balance = (billCustomer.balance || 0) + (totalBill - paid);
+        }
+        billCustomer.totalPaid = (billCustomer.totalPaid || 0) + paid;
+    }
+
+    // Update primary customer visits if different
+    if (billCustomerId !== addSessionState.selectedCustomerId) {
+        const primary = state.customers.find(c => c.id === addSessionState.selectedCustomerId);
+        if (primary) primary.visits = (primary.visits || 0) + 1;
+    }
+
+    // Update daily closing
+    let closing = state.dailyClosings.find(c => c.date === date);
+    if (!closing) {
+        closing = {date: date, sessions: [], totalRevenue: 0, totalPending: 0, breakdown: {}};
+        state.dailyClosings.push(closing);
+    }
+    closing.sessions.push(session.id);
+    closing.totalRevenue += paid;
+    if (status !== 'paid') {
+        closing.totalPending += (totalBill - paid);
+    }
+    closing.breakdown[session.resourceId] = (closing.breakdown[session.resourceId] || 0) + 1;
+
+    saveData();
+    closeModal('modal-add-session');
+    renderDashboard();
+    if (document.getElementById('view-closing').classList.contains('active')) {
+        loadClosing();
+    }
+}
+
+// ===================== INIT =====================
+loadData();
+renderDashboard();
+const closingDateInput = document.getElementById('closing-date');
+if (closingDateInput) closingDateInput.value = getToday();
+
+// ===================== PWA SERVICE WORKER =====================
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').then(function(reg) {
+        console.log('SW registered:', reg.scope);
+    }).catch(function(err) {
+        console.log('SW registration failed:', err);
+    });
+}
+</script>
+</body>
+</html>
