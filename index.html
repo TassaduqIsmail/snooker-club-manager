@@ -1063,6 +1063,25 @@ function recordPayment() {
     c.balance = Math.max(0, (c.balance || 0) - amount);
     c.totalPaid = (c.totalPaid || 0) + amount;
 
+    // Settle this customer's unpaid sessions, oldest first
+    let remaining = amount;
+    const unpaid = state.sessions
+        .filter(s => s.billCustomerId === c.id && s.endTime && s.status !== 'paid')
+        .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+    unpaid.forEach(s => {
+        if (remaining <= 0) return;
+        const due = (s.totalBill || 0) - (s.paidAmount || 0);
+        if (due <= 0) { s.status = 'paid'; return; }
+        const applied = Math.min(remaining, due);
+        s.paidAmount = (s.paidAmount || 0) + applied;
+        remaining -= applied;
+        s.status = (s.paidAmount >= s.totalBill) ? 'paid' : 'partial';
+        const sessionClosing = state.dailyClosings.find(cl => cl.date === s.date);
+        if (sessionClosing) {
+            sessionClosing.totalPending = Math.max(0, (sessionClosing.totalPending || 0) - applied);
+        }
+    });
+
     let closing = state.dailyClosings.find(cl => cl.date === getToday());
     if (closing) {
         closing.totalRevenue += amount;
