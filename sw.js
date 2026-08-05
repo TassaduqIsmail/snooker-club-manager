@@ -1,4 +1,4 @@
-const CACHE_NAME = 'snooker-club-v1';
+const CACHE_NAME = 'snooker-club-v2';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', function(e) {
