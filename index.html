@@ -109,6 +109,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .customer-balance{font-size:1.1rem;font-weight:700;color:var(--warning);text-align:right}
 .customer-balance.paid{color:var(--success)}
 .customer-balance small{display:block;font-size:0.72rem;color:var(--text-muted);font-weight:400}
+/* ===== LOGIN ===== */
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:none;align-items:center;justify-content:center;padding:1rem}
+#login-screen.active{display:flex}
+.login-card{background:var(--surface);border-radius:var(--radius);padding:2rem;width:100%;max-width:400px;border:1px solid rgba(255,255,255,0.06)}
+.login-card h1{font-size:1.4rem;margin-bottom:0.3rem;text-align:center}
+.login-card .login-sub{color:var(--text-muted);font-size:0.85rem;text-align:center;margin-bottom:1.5rem}
+.login-err{background:rgba(239,68,68,0.12);color:#f87171;border-radius:8px;padding:0.6rem 0.8rem;font-size:0.85rem;margin-bottom:1rem;display:none}
+.login-err.active{display:block}
+.login-ok{background:rgba(34,197,94,0.12);color:#4ade80;border-radius:8px;padding:0.6rem 0.8rem;font-size:0.85rem;margin-bottom:1rem;display:none}
+.login-ok.active{display:block}
+.login-switch{text-align:center;margin-top:1rem;font-size:0.85rem;color:var(--text-muted)}
+.login-switch a{color:var(--accent);cursor:pointer;text-decoration:underline}
+#sync-status{font-size:0.72rem;color:var(--text-muted);margin-right:0.5rem;white-space:nowrap}
+#sync-status.saved{color:var(--success)}
+#sync-status.error{color:var(--warning)}
 .wl-badge{display:inline-flex;gap:0.5rem;margin-top:0.3rem}
 .wl-badge span{font-size:0.72rem;padding:0.15rem 0.5rem;border-radius:6px;font-weight:700}
 .wl-win{background:var(--success-bg);color:var(--success)}
@@ -172,15 +187,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="application-name" content="Snooker Club Manager">
 <link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
+<div id="login-screen">
+<div class="login-card">
+<h1>🎱 Snooker Club Manager</h1>
+<div class="login-sub" id="login-sub">Sign in to access your club data</div>
+<div class="login-err" id="login-err"></div>
+<div class="login-ok" id="login-ok"></div>
+<div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="login-email" placeholder="you@example.com" autocomplete="email"></div>
+<div class="form-group"><label class="form-label">Password</label><input type="password" class="form-input" id="login-password" placeholder="Password" autocomplete="current-password"></div>
+<button class="btn-primary" id="login-btn" onclick="doLogin()">Sign In</button>
+<div class="login-switch" id="login-switch">No account yet? <a onclick="toggleAuthMode()">Create one</a></div>
+</div>
+</div>
 <div class="header">
 <h1>🎱 Snooker Club Manager</h1>
 <div class="nav-tabs">
+<span id="sync-status"></span>
 <button class="nav-tab active" data-view="dashboard">Dashboard</button>
 <button class="nav-tab" data-view="customers">Customers</button>
 <button class="nav-tab" data-view="closing">Daily Closing</button>
 <button class="icon-btn" onclick="openBackupModal()" title="Backup & Restore">💾</button>
+<button class="icon-btn" id="logout-btn" onclick="doLogout()" title="Sign Out" style="display:none;">🚪</button>
 </div>
 </div>
 <div class="main">
@@ -217,9 +247,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div class="modal">
 <div class="modal-header"><h2>Start Session — <span id="tin-resource"></span></h2><button class="modal-close" onclick="closeModal('modal-timein')">&times;</button></div>
 <div class="modal-body">
-<div class="form-group"><label class="form-label">Bill To (Primary Customer)</label><div style="position:relative;"><input type="text" class="form-input" id="tin-customer-search" placeholder="Search existing customer or type new name..." autocomplete="off"><div class="player-dropdown" id="tin-customer-dropdown"></div></div></div>
 <div class="form-group"><label class="form-label">Number of Players</label><div class="radio-group"><div class="radio-btn active" data-value="2" onclick="selectPlayers(2)">2 Players</div><div class="radio-btn" data-value="4" onclick="selectPlayers(4)">4 Players</div></div></div>
-<div class="form-group"><label class="form-label">Players <small style="color:var(--text-muted);font-weight:400;">(select from customers or type guest name)</small></label><div id="player-slots"></div></div>
+<div class="form-group"><label class="form-label">Players <small style="color:var(--text-muted);font-weight:400;">(Player 1 is billed — existing names pull up automatically)</small></label><div id="player-slots"></div></div>
 <div class="form-group" id="tin-extra-group" style="display:none;"><label class="form-label">Extra Charge (4 players) — PKR</label><input type="number" class="form-input" id="tin-extra" value="100" min="0" step="1"></div>
 <div class="form-group"><label class="form-label">Rate per Minute — PKR</label><input type="number" class="form-input" id="tin-rate" value="10" min="0" step="1"></div>
 <button class="btn-primary" onclick="confirmTimeIn()">Start Session</button>
@@ -359,9 +388,171 @@ let state = {
     toutCalc: null
 };
 
+// ===================== CLOUD CONFIG (SUPABASE) =====================
+// 1. Create a free project at https://supabase.com
+// 2. Run the SQL from SETUP.sql (in this repo) in the Supabase SQL Editor
+// 3. Paste your Project URL and anon public key below (Settings → API)
+const SUPABASE_URL = 'https://ayboqvfzfojwcxxrteyi.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5Ym9xdmZ6Zm9qd2N4eHJ0ZXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5Mjk1MjMsImV4cCI6MjEwMTUwNTUyM30.jH4Z8Zt_ySiPNgAN26eFp9qKmrgZlubkqcgMmpW5TY8';
+
+const CLOUD_ENABLED = SUPABASE_URL.indexOf('https://') === 0 && typeof supabase !== 'undefined';
+const sb = CLOUD_ENABLED ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let currentUser = null;
+let authMode = 'signin'; // or 'signup'
+let cloudSaveTimer = null;
+let cloudLoaded = false;
+
+function storageKey() {
+    return currentUser ? ('snookerClubData:' + currentUser.id) : 'snookerClubData';
+}
+
+function setSyncStatus(text, cls) {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    el.textContent = text;
+    el.className = cls || '';
+}
+
+function showLoginError(msg) {
+    const el = document.getElementById('login-err');
+    el.textContent = msg; el.classList.add('active');
+    document.getElementById('login-ok').classList.remove('active');
+}
+function showLoginOk(msg) {
+    const el = document.getElementById('login-ok');
+    el.textContent = msg; el.classList.add('active');
+    document.getElementById('login-err').classList.remove('active');
+}
+
+function toggleAuthMode() {
+    authMode = (authMode === 'signin') ? 'signup' : 'signin';
+    document.getElementById('login-btn').textContent = (authMode === 'signin') ? 'Sign In' : 'Create Account';
+    document.getElementById('login-sub').textContent = (authMode === 'signin') ? 'Sign in to access your club data' : 'Create an account for your club';
+    document.getElementById('login-switch').innerHTML = (authMode === 'signin')
+        ? 'No account yet? <a onclick="toggleAuthMode()">Create one</a>'
+        : 'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>';
+    document.getElementById('login-err').classList.remove('active');
+    document.getElementById('login-ok').classList.remove('active');
+}
+
+async function doLogin() {
+    if (!sb) return;
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) { showLoginError('Enter email and password'); return; }
+    if (password.length < 6) { showLoginError('Password must be at least 6 characters'); return; }
+    const btn = document.getElementById('login-btn');
+    btn.disabled = true; btn.textContent = 'Please wait...';
+    try {
+        if (authMode === 'signup') {
+            const { data, error } = await sb.auth.signUp({ email: email, password: password });
+            if (error) { showLoginError(error.message); }
+            else if (data.user && !data.session) {
+                showLoginOk('Account created! Check your email to confirm, then sign in.');
+                authMode = 'signin'; toggleAuthMode(); toggleAuthMode();
+            }
+            // if session exists, onAuthStateChange fires and starts the app
+        } else {
+            const { error } = await sb.auth.signInWithPassword({ email: email, password: password });
+            if (error) showLoginError(error.message);
+        }
+    } catch (e) {
+        showLoginError('Connection failed. Check your internet.');
+    }
+    btn.disabled = false;
+    btn.textContent = (authMode === 'signin') ? 'Sign In' : 'Create Account';
+}
+
+async function doLogout() {
+    if (sb) await sb.auth.signOut();
+}
+
+async function loadCloudData() {
+    if (!sb || !currentUser) return;
+    setSyncStatus('Loading...', '');
+    try {
+        const { data, error } = await sb.from('club_data').select('data').eq('user_id', currentUser.id).maybeSingle();
+        if (error) throw error;
+        if (data && data.data) {
+            state.customers = data.data.customers || [];
+            state.sessions = data.data.sessions || [];
+            state.payments = data.data.payments || [];
+            state.dailyClosings = data.data.dailyClosings || [];
+            localStorage.setItem(storageKey(), JSON.stringify(data.data));
+        } else {
+            // First login on this account: migrate any old local data to the cloud
+            const legacy = localStorage.getItem('snookerClubData') || localStorage.getItem(storageKey());
+            if (legacy) {
+                try {
+                    const parsed = JSON.parse(legacy);
+                    state.customers = parsed.customers || [];
+                    state.sessions = parsed.sessions || [];
+                    state.payments = parsed.payments || [];
+                    state.dailyClosings = parsed.dailyClosings || [];
+                } catch (e) {}
+            }
+            await pushCloudNow();
+            localStorage.setItem(storageKey(), JSON.stringify({
+                customers: state.customers, sessions: state.sessions,
+                payments: state.payments, dailyClosings: state.dailyClosings
+            }));
+        }
+        cloudLoaded = true;
+        setSyncStatus('Synced ✓', 'saved');
+    } catch (e) {
+        console.error('Cloud load error:', e);
+        // Fall back to local cache so the club can keep running offline
+        try {
+            const cached = localStorage.getItem(storageKey());
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                state.customers = parsed.customers || [];
+                state.sessions = parsed.sessions || [];
+                state.payments = parsed.payments || [];
+                state.dailyClosings = parsed.dailyClosings || [];
+            }
+        } catch (e2) {}
+        setSyncStatus('Offline — using local data', 'error');
+    }
+}
+
+async function pushCloudNow() {
+    if (!sb || !currentUser) return;
+    const payload = {
+        user_id: currentUser.id,
+        data: {
+            customers: state.customers,
+            sessions: state.sessions,
+            payments: state.payments,
+            dailyClosings: state.dailyClosings
+        },
+        updated_at: new Date().toISOString()
+    };
+    const { error } = await sb.from('club_data').upsert(payload, { onConflict: 'user_id' });
+    if (error) throw error;
+}
+
+function scheduleCloudSave() {
+    if (!sb || !currentUser) return;
+    setSyncStatus('Saving...', '');
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = setTimeout(async () => {
+        try {
+            await pushCloudNow();
+            setSyncStatus('Synced ✓', 'saved');
+        } catch (e) {
+            console.error('Cloud save error:', e);
+            setSyncStatus('Offline — will retry', 'error');
+            // retry in 15s
+            clearTimeout(cloudSaveTimer);
+            cloudSaveTimer = setTimeout(() => scheduleCloudSave(), 15000);
+        }
+    }, 1200);
+}
+
 function loadData() {
     try {
-        const data = localStorage.getItem('snookerClubData');
+        const data = localStorage.getItem(storageKey());
         if (data) {
             const parsed = JSON.parse(data);
             state.customers = parsed.customers || [];
@@ -372,23 +563,93 @@ function loadData() {
     } catch (e) {
         console.error('Load error:', e);
     }
+    mergeDuplicateCustomers();
     RESOURCES.forEach(r => {
         const active = state.sessions.find(s => s.resourceId === r.id && !s.endTime);
         state.resources[r.id] = active ? active : null;
     });
 }
 
+// One-time cleanup: merge customers that share the same name (case-insensitive).
+// Keeps the first customer, sums totals, and re-points sessions/payments to it.
+function mergeDuplicateCustomers() {
+    const byName = {};
+    const idMap = {};
+    const merged = [];
+    let changed = false;
+    state.customers.forEach(c => {
+        const key = normName(c.name);
+        if (byName[key]) {
+            const keep = byName[key];
+            keep.visits += (c.visits || 0);
+            keep.balance += (c.balance || 0);
+            keep.totalPaid += (c.totalPaid || 0);
+            keep.wins = (keep.wins || 0) + (c.wins || 0);
+            keep.losses = (keep.losses || 0) + (c.losses || 0);
+            if (!keep.phone && c.phone) keep.phone = c.phone;
+            if (c.lastRate) keep.lastRate = c.lastRate;
+            idMap[c.id] = keep.id;
+            changed = true;
+        } else {
+            byName[key] = c;
+            merged.push(c);
+        }
+    });
+    if (!changed) return;
+    state.customers = merged;
+    state.sessions.forEach(s => {
+        if (idMap[s.customerId]) s.customerId = idMap[s.customerId];
+        if (s.playersData) s.playersData.forEach(p => { if (p.customerId && idMap[p.customerId]) p.customerId = idMap[p.customerId]; });
+    });
+    state.payments.forEach(p => { if (idMap[p.customerId]) p.customerId = idMap[p.customerId]; });
+    saveData();
+}
+
 function saveData() {
-    localStorage.setItem('snookerClubData', JSON.stringify({
+    localStorage.setItem(storageKey(), JSON.stringify({
         customers: state.customers,
         sessions: state.sessions,
         payments: state.payments,
         dailyClosings: state.dailyClosings
     }));
+    scheduleCloudSave();
 }
 
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// ===== UNIQUE CUSTOMER BY NAME (single source of truth) =====
+function normName(name) {
+    return (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+function findCustomerByName(name) {
+    const n = normName(name);
+    if (!n) return null;
+    return state.customers.find(c => normName(c.name) === n) || null;
+}
+// Always use this to add customers. If the name already exists (case-insensitive),
+// it returns the EXISTING customer instead of creating a duplicate.
+function findOrCreateCustomer(name, phone) {
+    const existing = findCustomerByName(name);
+    if (existing) {
+        if (phone && !existing.phone) { existing.phone = phone.trim(); saveData(); }
+        return existing;
+    }
+    const customer = {
+        id: generateId(),
+        name: (name || '').trim().replace(/\s+/g, ' '),
+        phone: (phone || '').trim(),
+        visits: 0,
+        balance: 0,
+        totalPaid: 0,
+        lastRate: null,
+        wins: 0,
+        losses: 0
+    };
+    state.customers.push(customer);
+    saveData();
+    return customer;
 }
 
 function formatCurrency(n) {
@@ -517,7 +778,7 @@ function openTimeIn(resourceId) {
     state.playerSlotsData = [];
     const res = RESOURCES.find(r => r.id === resourceId);
     document.getElementById('tin-resource').textContent = res ? res.name : resourceId;
-    document.getElementById('tin-customer-search').value = '';
+    const tcs = document.getElementById('tin-customer-search'); if (tcs) tcs.value = '';
     document.getElementById('tin-rate').value = '10';
     selectPlayers(2);
     document.getElementById('modal-timein').classList.add('active');
@@ -546,7 +807,7 @@ function renderPlayerSlots(count) {
             '<input type="text" class="form-input player-name-input" data-index="' + i + '" placeholder="Search customer or type guest name..." autocomplete="off" style="background:transparent;border:none;padding:0;">' +
             '<div class="player-dropdown" id="player-dd-' + i + '"></div>' +
             '</div>' +
-            '<div class="player-tag guest" id="player-tag-' + i + '">Guest</div>';
+            '<div class="player-tag' + (i === 0 ? '' : ' guest') + '" id="player-tag-' + i + '">' + (i === 0 ? 'Bill To' : 'Guest') + '</div>';
         container.appendChild(div);
     }
     setTimeout(() => {
@@ -568,19 +829,21 @@ function handlePlayerSearch(index, query) {
     dd.innerHTML = '';
     if (!q) { dd.classList.remove('active'); return; }
     const matches = state.customers.filter(c => c.name.toLowerCase().includes(q));
+    const guestOpt = (index === 0) ? '' : '<div class="dd-item dd-add" onclick="setPlayerGuest(' + index + ', \'' + escapeJs(q) + '\')">+ "' + escapeHtml(q) + '" as Guest</div>';
+    const createLabel = (index === 0) ? '+ Add Customer "' : '+ Create Customer "';
     if (matches.length === 0) {
-        dd.innerHTML = '<div class="dd-item dd-add" onclick="setPlayerGuest(' + index + ', \'' + escapeJs(q) + '\')">+ "' + escapeHtml(q) + '" as Guest</div>' +
-            '<div class="dd-item dd-add" onclick="createPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+        dd.innerHTML = guestOpt +
+            '<div class="dd-item dd-add" onclick="createPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">' + createLabel + escapeHtml(q) + '"</div>';
     } else {
         matches.forEach(c => {
             const div = document.createElement('div');
             div.className = 'dd-item';
-            div.innerHTML = '<span>' + escapeHtml(c.name) + '</span><span class="dd-guest">Customer</span>';
+            div.innerHTML = '<span>' + escapeHtml(c.name) + '</span><span class="dd-guest">' + (index === 0 ? 'Bill To' : 'Customer') + '</span>';
             div.onclick = () => setPlayerCustomer(index, c.id, c.name);
             dd.appendChild(div);
         });
-        dd.innerHTML += '<div class="dd-item dd-add" onclick="setPlayerGuest(' + index + ', \'' + escapeJs(q) + '\')">+ "' + escapeHtml(q) + '" as Guest</div>' +
-            '<div class="dd-item dd-add" onclick="createPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+        dd.innerHTML += guestOpt +
+            (findCustomerByName(q) ? '' : '<div class="dd-item dd-add" onclick="createPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">' + createLabel + escapeHtml(q) + '"</div>');
     }
     dd.classList.add('active');
 }
@@ -597,15 +860,22 @@ function setPlayerCustomer(index, customerId, name) {
     if (inp) inp.value = name;
     if (tag) { tag.textContent = 'Customer'; tag.className = 'player-tag'; }
     closePlayerDropdown(index);
-    if (index === 0 && !state.selectedCustomerId) {
+    if (index === 0) {
         state.selectedCustomerId = customerId;
-        document.getElementById('tin-customer-search').value = name;
+        const tcs = document.getElementById('tin-customer-search'); if (tcs) tcs.value = name;
         const c = state.customers.find(x => x.id === customerId);
         if (c && c.lastRate) document.getElementById('tin-rate').value = c.lastRate;
     }
 }
 
 function setPlayerGuest(index, name) {
+    // Player 1 is the billing customer — never a guest. If the name exists it's
+    // pulled; otherwise the customer is created once here.
+    if (index === 0) {
+        const customer = findOrCreateCustomer(name);
+        setPlayerCustomer(0, customer.id, customer.name);
+        return;
+    }
     state.playerSlotsData[index] = {name: name, customerId: null, isGuest: true};
     const inp = document.querySelector('.player-name-input[data-index="' + index + '"]');
     const tag = document.getElementById('player-tag-' + index);
@@ -615,20 +885,8 @@ function setPlayerGuest(index, name) {
 }
 
 function createPlayerCustomer(index, name) {
-    const customer = {
-        id: generateId(),
-        name: name,
-        phone: '',
-        visits: 0,
-        balance: 0,
-        totalPaid: 0,
-        lastRate: null,
-        wins: 0,
-        losses: 0
-    };
-    state.customers.push(customer);
-    saveData();
-    setPlayerCustomer(index, customer.id, name);
+    const customer = findOrCreateCustomer(name);
+    setPlayerCustomer(index, customer.id, customer.name);
 }
 
 // Primary customer search
@@ -657,7 +915,7 @@ if (customerSearch) {
                 };
                 customerDropdown.appendChild(div);
             });
-            customerDropdown.innerHTML += '<div class="dd-item dd-add" onclick="createPrimaryCustomer(\'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+            if (!findCustomerByName(q)) customerDropdown.innerHTML += '<div class="dd-item dd-add" onclick="createPrimaryCustomer(\'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
         }
         customerDropdown.classList.add('active');
     });
@@ -665,29 +923,38 @@ if (customerSearch) {
 }
 
 function createPrimaryCustomer(name) {
-    const customer = {
-        id: generateId(),
-        name: name,
-        phone: '',
-        visits: 0,
-        balance: 0,
-        totalPaid: 0,
-        lastRate: null,
-        wins: 0,
-        losses: 0
-    };
-    state.customers.push(customer);
+    const customer = findOrCreateCustomer(name);
     state.selectedCustomerId = customer.id;
-    if (customerSearch) customerSearch.value = name;
-    saveData();
-    setPlayerCustomer(0, customer.id, name);
+    if (customerSearch) customerSearch.value = customer.name;
+    if (customer.lastRate) document.getElementById('tin-rate').value = customer.lastRate;
+    setPlayerCustomer(0, customer.id, customer.name);
 }
 
 function confirmTimeIn() {
-    if (!state.selectedCustomerId) {
-        alert('Please select a primary customer (Bill To)');
-        return;
+    // If Player 1 was typed but not picked from the dropdown, sync it now
+    const p0input = document.querySelector('.player-name-input[data-index="0"]');
+    if (p0input && p0input.value.trim() && !state.playerSlotsData[0].name.trim()) {
+        state.playerSlotsData[0].name = p0input.value.trim();
     }
+    if (!state.selectedCustomerId) {
+        const p0name = (state.playerSlotsData[0] && state.playerSlotsData[0].name || '').trim();
+        if (p0name) {
+            // Pull the existing customer by name, or create once
+            const customer = findOrCreateCustomer(p0name);
+            state.playerSlotsData[0] = {name: customer.name, customerId: customer.id, isGuest: false};
+            state.selectedCustomerId = customer.id;
+        } else {
+            alert('Please enter Player 1 — they are the billing customer');
+            return;
+        }
+    }
+    // Sync any other typed-but-not-selected player names as guests
+    document.querySelectorAll('.player-name-input').forEach(inp => {
+        const i = parseInt(inp.dataset.index);
+        if (i > 0 && inp.value.trim() && !state.playerSlotsData[i].name.trim()) {
+            state.playerSlotsData[i] = {name: inp.value.trim(), customerId: null, isGuest: true};
+        }
+    });
     const emptyPlayer = state.playerSlotsData.findIndex(p => !p.name.trim());
     if (emptyPlayer !== -1) {
         alert('Please enter a name for Player ' + (emptyPlayer + 1));
@@ -922,23 +1189,13 @@ function openAddCustomer(prefillName) {
 function addNewCustomer() {
     const name = document.getElementById('new-customer-name').value.trim();
     if (!name) { alert('Please enter a name'); return; }
-    const customer = {
-        id: generateId(),
-        name: name,
-        phone: document.getElementById('new-customer-phone').value.trim(),
-        visits: 0,
-        balance: 0,
-        totalPaid: 0,
-        lastRate: null,
-        wins: 0,
-        losses: 0
-    };
-    state.customers.push(customer);
-    saveData();
+    const existing = findCustomerByName(name);
+    if (existing) {
+        alert('"' + existing.name + '" already exists — pulling the existing customer.');
+    }
+    const customer = findOrCreateCustomer(name, document.getElementById('new-customer-phone').value.trim());
     closeModal('modal-add-customer');
     if (state.currentTinResource) {
-        state.selectedCustomerId = customer.id;
-        document.getElementById('tin-customer-search').value = customer.name;
         setPlayerCustomer(0, customer.id, customer.name);
     }
 }
@@ -1318,7 +1575,7 @@ function handleAddPlayerSearch(index, query) {
             dd.appendChild(div);
         });
         dd.innerHTML += '<div class="dd-item dd-add" onclick="setAddPlayerGuest(' + index + ', \'' + escapeJs(q) + '\')">+ "' + escapeHtml(q) + '" as Guest</div>' +
-            '<div class="dd-item dd-add" onclick="createAddPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+            (findCustomerByName(q) ? '' : '<div class="dd-item dd-add" onclick="createAddPlayerCustomer(' + index + ', \'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>');
     }
     dd.classList.add('active');
 }
@@ -1353,20 +1610,8 @@ function setAddPlayerGuest(index, name) {
 }
 
 function createAddPlayerCustomer(index, name) {
-    const customer = {
-        id: generateId(),
-        name: name,
-        phone: '',
-        visits: 0,
-        balance: 0,
-        totalPaid: 0,
-        lastRate: null,
-        wins: 0,
-        losses: 0
-    };
-    state.customers.push(customer);
-    saveData();
-    setAddPlayerCustomer(index, customer.id, name);
+    const customer = findOrCreateCustomer(name);
+    setAddPlayerCustomer(index, customer.id, customer.name);
 }
 
 // Primary customer search for add session
@@ -1394,7 +1639,7 @@ if (addCustomerSearch) {
                 };
                 addCustomerDropdown.appendChild(div);
             });
-            addCustomerDropdown.innerHTML += '<div class="dd-item dd-add" onclick="createAddPrimaryCustomer(\'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
+            if (!findCustomerByName(q)) addCustomerDropdown.innerHTML += '<div class="dd-item dd-add" onclick="createAddPrimaryCustomer(\'' + escapeJs(q) + '\')">+ Create Customer "' + escapeHtml(q) + '"</div>';
         }
         addCustomerDropdown.classList.add('active');
     });
@@ -1402,22 +1647,10 @@ if (addCustomerSearch) {
 }
 
 function createAddPrimaryCustomer(name) {
-    const customer = {
-        id: generateId(),
-        name: name,
-        phone: '',
-        visits: 0,
-        balance: 0,
-        totalPaid: 0,
-        lastRate: null,
-        wins: 0,
-        losses: 0
-    };
-    state.customers.push(customer);
+    const customer = findOrCreateCustomer(name);
     addSessionState.selectedCustomerId = customer.id;
-    if (addCustomerSearch) addCustomerSearch.value = name;
-    saveData();
-    setAddPlayerCustomer(0, customer.id, name);
+    if (addCustomerSearch) addCustomerSearch.value = customer.name;
+    setAddPlayerCustomer(0, customer.id, customer.name);
 }
 
 function updateAddLoserDropdown() {
@@ -1602,10 +1835,43 @@ function confirmAddSession() {
 }
 
 // ===================== INIT =====================
-loadData();
-renderDashboard();
-const closingDateInput = document.getElementById('closing-date');
-if (closingDateInput) closingDateInput.value = getToday();
+function startApp() {
+    // Reset per-view state so a previous user's data never leaks into the UI
+    RESOURCES.forEach(r => { state.resources[r.id] = null; });
+    loadData();
+    mergeDuplicateCustomers();
+    renderDashboard();
+    renderCustomers();
+    const closingDateInput = document.getElementById('closing-date');
+    if (closingDateInput) closingDateInput.value = getToday();
+    showView('dashboard');
+}
+
+if (CLOUD_ENABLED) {
+    document.getElementById('login-screen').classList.add('active');
+    document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    sb.auth.onAuthStateChange(async (event, session) => {
+        if (session && session.user) {
+            currentUser = session.user;
+            document.getElementById('login-screen').classList.remove('active');
+            document.getElementById('logout-btn').style.display = '';
+            state.customers = []; state.sessions = []; state.payments = []; state.dailyClosings = [];
+            await loadCloudData();
+            startApp();
+        } else {
+            currentUser = null;
+            cloudLoaded = false;
+            state.customers = []; state.sessions = []; state.payments = []; state.dailyClosings = [];
+            document.getElementById('logout-btn').style.display = 'none';
+            document.getElementById('login-screen').classList.add('active');
+            setSyncStatus('', '');
+        }
+    });
+} else {
+    // Supabase not configured yet — run in local-only mode (old behavior)
+    console.warn('Supabase not configured. Running with localStorage only. Edit SUPABASE_URL / SUPABASE_ANON_KEY at the top of the script to enable login + cloud database.');
+    startApp();
+}
 
 // ===================== PWA SERVICE WORKER =====================
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
