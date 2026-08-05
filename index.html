@@ -992,7 +992,7 @@ function confirmTimeIn() {
 // ===================== TIME OUT =====================
 function openTimeOut(resourceId) {
     state.currentToutResource = resourceId;
-    state.loserPays = false;
+    state.loserPays = true; // club rule: loser pays — decided at checkout
     state.selectedLoserIndex = -1;
     const session = state.resources[resourceId];
     if (!session) return;
@@ -1008,7 +1008,8 @@ function openTimeOut(resourceId) {
     state.toutCalc = {endTime: endTime.toISOString(), durationMin: durationMin, totalBill: totalBill};
 
     document.getElementById('tout-resource').textContent = res ? res.name : resourceId;
-    document.getElementById('tout-customer').textContent = customer ? customer.name : 'Unknown';
+    state.toutPrimaryName = customer ? customer.name : 'Unknown';
+    document.getElementById('tout-customer').textContent = state.toutPrimaryName + ' (Player 1 — until loser is picked)';
     document.getElementById('tout-players').textContent = session.players + ' — ' + playersStr;
     document.getElementById('tout-start').textContent = formatTime(session.startTime);
     document.getElementById('tout-end').textContent = formatTime(endTime);
@@ -1040,8 +1041,8 @@ function openTimeOut(resourceId) {
     }
 
     const toggle = document.getElementById('loser-toggle');
-    if (toggle) toggle.classList.remove('on');
-    if (loserSection) loserSection.style.display = 'none';
+    if (toggle) toggle.classList.toggle('on', state.loserPays);
+    if (loserSection) loserSection.style.display = state.loserPays ? 'block' : 'none';
 
     selectPaymentStatus('pending');
     document.getElementById('tout-paid').value = '0';
@@ -1055,6 +1056,20 @@ function toggleLoserPays() {
     if (toggle) toggle.classList.toggle('on', state.loserPays);
     const section = document.getElementById('loser-section');
     if (section) section.style.display = state.loserPays ? 'block' : 'none';
+    updateToutBillTo();
+}
+
+function updateToutBillTo() {
+    const el = document.getElementById('tout-customer');
+    if (!el) return;
+    const session = state.resources[state.currentToutResource];
+    if (state.loserPays && state.selectedLoserIndex >= 0 && session && session.playersData[state.selectedLoserIndex]) {
+        el.textContent = session.playersData[state.selectedLoserIndex].name + ' 🏆 (loser pays)';
+    } else if (state.loserPays) {
+        el.textContent = state.toutPrimaryName + ' (Player 1 — until loser is picked)';
+    } else {
+        el.textContent = state.toutPrimaryName;
+    }
 }
 
 function selectLoser(index) {
@@ -1064,6 +1079,7 @@ function selectLoser(index) {
         const inp = el.querySelector('input');
         if (inp) inp.checked = (i === index);
     });
+    updateToutBillTo();
 }
 
 function selectPaymentStatus(status) {
@@ -1102,6 +1118,10 @@ if (toutPaidInput) {
 function confirmTimeOut() {
     const session = state.resources[state.currentToutResource];
     if (!session) return;
+    if (state.loserPays && state.selectedLoserIndex < 0) {
+        alert('Loser Pays is ON — select who lost, or turn the toggle off to bill Player 1.');
+        return;
+    }
     const calc = state.toutCalc;
     session.endTime = calc.endTime;
     session.duration = calc.durationMin;
@@ -1119,7 +1139,14 @@ function confirmTimeOut() {
 
     if (state.loserPays && state.selectedLoserIndex >= 0) {
         session.loserIndex = state.selectedLoserIndex;
-        const loser = session.playersData[state.selectedLoserIndex];
+        let loser = session.playersData[state.selectedLoserIndex];
+        if (loser && !loser.customerId && loser.name.trim()) {
+            // Guest lost — pull existing customer by name or create once, so the
+            // bill and balance attach to them
+            const c = findOrCreateCustomer(loser.name);
+            session.playersData[state.selectedLoserIndex] = {name: c.name, customerId: c.id, isGuest: false};
+            loser = session.playersData[state.selectedLoserIndex];
+        }
         if (loser && loser.customerId) {
             billCustomerId = loser.customerId;
         }
