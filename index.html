@@ -251,6 +251,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div class="form-group"><label class="form-label">Players <small style="color:var(--text-muted);font-weight:400;">(Player 1 is billed — existing names pull up automatically)</small></label><div id="player-slots"></div></div>
 <div class="form-group" id="tin-extra-group" style="display:none;"><label class="form-label">Extra Charge (4 players) — PKR</label><input type="number" class="form-input" id="tin-extra" value="100" min="0" step="1"></div>
 <div class="form-group"><label class="form-label">Rate per Minute — PKR</label><input type="number" class="form-input" id="tin-rate" value="10" min="0" step="1"></div>
+<div class="form-group">
+<label class="form-label">Time In</label>
+<div class="radio-group">
+<div class="radio-btn active" id="tin-start-now" onclick="setTinStartMode('now')">Now</div>
+<div class="radio-btn" id="tin-start-manual" onclick="setTinStartMode('manual')">Earlier…</div>
+</div>
+<input type="time" class="form-input" id="tin-start-time" style="display:none;margin-top:0.6rem;">
+<div id="tin-start-hint" style="display:none;font-size:0.78rem;color:var(--warning);margin-top:0.4rem;font-weight:600;"></div>
+</div>
 <button class="btn-primary" onclick="confirmTimeIn()">Start Session</button>
 </div>
 </div>
@@ -270,12 +279,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 <div class="bill-row" id="tout-extra-row" style="display:none;"><span class="info-label">Extra Charge</span><span id="tout-extra" class="info-value"></span></div>
 <div class="bill-row total"><span>Total Bill</span><span id="tout-total"></span></div>
 </div>
+<div class="form-group">
+<label class="form-label">Actual Time Out <small style="color:var(--text-muted);font-weight:400;text-transform:none;">(change if players left earlier)</small></label>
+<input type="time" class="form-input" id="tout-endtime">
+<div id="tout-endtime-warn" class="alert-box alert-warning" style="display:none;margin-top:0.6rem;"></div>
+</div>
 <div class="toggle-row"><span class="toggle-label">🏆 Loser Pays</span><div class="toggle-switch" id="loser-toggle" onclick="toggleLoserPays()"></div></div>
 <div class="loser-section" id="loser-section" style="display:none;"><h4>Select who lost (bill goes to this player)</h4><div id="loser-options"></div></div>
 <div class="form-group"><label class="form-label">Payment Status</label><div class="radio-group"><div class="radio-btn" data-value="paid" onclick="selectPaymentStatus('paid')">Paid</div><div class="radio-btn active" data-value="pending" onclick="selectPaymentStatus('pending')">Pending</div></div></div>
 <div class="form-group" id="tout-paid-group" style="display:block;"><label class="form-label">Amount Paid (PKR)</label><input type="number" class="form-input" id="tout-paid" value="0" min="0" step="1"></div>
 <div class="form-group" id="tout-balance-group" style="display:block;"><label class="form-label">Remaining Balance (PKR)</label><input type="number" class="form-input" id="tout-balance" readonly></div>
-<button class="btn-primary" onclick="confirmTimeOut()">Confirm & Close</button>
+<button class="btn-primary" onclick="confirmTimeOut()">Confirm &amp; Close</button>
 </div>
 </div>
 </div>
@@ -385,7 +399,8 @@ let state = {
     loserPays: false,
     selectedLoserIndex: -1,
     playerSlotsData: [],
-    toutCalc: null
+    toutCalc: null,
+    tinStartMode: 'now'
 };
 
 // ===================== CLOUD CONFIG (SUPABASE) =====================
@@ -780,13 +795,15 @@ function openTimeIn(resourceId) {
     document.getElementById('tin-resource').textContent = res ? res.name : resourceId;
     const tcs = document.getElementById('tin-customer-search'); if (tcs) tcs.value = '';
     document.getElementById('tin-rate').value = '10';
+    document.getElementById('tin-start-time').value = '';
+    setTinStartMode('now');
     selectPlayers(2);
     document.getElementById('modal-timein').classList.add('active');
 }
 
 function selectPlayers(n) {
     state.selectedPlayers = n;
-    document.querySelectorAll('#modal-timein .radio-btn').forEach(b => {
+    document.querySelectorAll('#modal-timein .radio-btn[data-value="2"], #modal-timein .radio-btn[data-value="4"]').forEach(b => {
         b.classList.toggle('active', parseInt(b.dataset.value) === n);
     });
     document.getElementById('tin-extra-group').style.display = (n === 4) ? 'block' : 'none';
@@ -930,6 +947,94 @@ function createPrimaryCustomer(name) {
     setPlayerCustomer(0, customer.id, customer.name);
 }
 
+// ===================== MANUAL TIME IN / TIME OUT =====================
+function setTinStartMode(mode) {
+    state.tinStartMode = mode;
+    document.getElementById('tin-start-now').classList.toggle('active', mode === 'now');
+    document.getElementById('tin-start-manual').classList.toggle('active', mode === 'manual');
+    const inp = document.getElementById('tin-start-time');
+    inp.style.display = (mode === 'manual') ? 'block' : 'none';
+    if (mode === 'manual' && !inp.value) inp.value = hhmm(new Date());
+    updateTinStartHint();
+}
+
+function hhmm(d) {
+    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+// Turns "HH:MM" into a real Date in the past. A time later than now is taken
+// to mean "yesterday" (session started just before midnight).
+function resolveManualStart(timeStr) {
+    const now = new Date();
+    const p = timeStr.split(':');
+    let start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(p[0]), parseInt(p[1]), 0, 0);
+    if (start > now) start = new Date(start.getTime() - 86400000);
+    if ((now - start) > 12 * 3600000) return {error: 'That time-in is more than 12 hours ago — double-check it.'};
+    return {date: start};
+}
+
+function updateTinStartHint() {
+    const hint = document.getElementById('tin-start-hint');
+    if (state.tinStartMode !== 'manual') { hint.style.display = 'none'; return; }
+    const t = document.getElementById('tin-start-time').value;
+    if (!t) { hint.style.display = 'none'; return; }
+    const r = resolveManualStart(t);
+    if (r.error) { hint.textContent = '⚠ ' + r.error; hint.style.display = 'block'; return; }
+    const mins = roundUpMinutes(Date.now() - r.date.getTime());
+    const yesterday = r.date.getDate() !== new Date().getDate();
+    hint.textContent = 'Timer starts with ' + formatDuration(mins) + ' already on the clock' + (yesterday ? ' (yesterday ' + formatTime(r.date) + ')' : '');
+    hint.style.display = 'block';
+}
+
+const tinStartTimeInput = document.getElementById('tin-start-time');
+if (tinStartTimeInput) tinStartTimeInput.addEventListener('input', updateTinStartHint);
+
+const toutEndInput = document.getElementById('tout-endtime');
+if (toutEndInput) toutEndInput.addEventListener('input', recalcTimeout);
+
+// Re-price the bill when the counter man corrects the actual time-out
+function recalcTimeout() {
+    const session = state.resources[state.currentToutResource];
+    if (!session) return;
+    const warn = document.getElementById('tout-endtime-warn');
+    const t = document.getElementById('tout-endtime').value;
+    const start = new Date(session.startTime);
+    const now = new Date();
+    let end = now;
+    if (t) {
+        const p = t.split(':');
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(p[0]), parseInt(p[1]), 0, 0);
+        if (end > now) end = new Date(end.getTime() - 86400000); // a "future" time means yesterday
+    }
+    if (end <= start) {
+        state.toutCalc = null;
+        warn.textContent = 'Time-out must be after time-in (' + formatTime(start) + ').';
+        warn.style.display = 'block';
+        document.getElementById('tout-end').textContent = formatTime(end);
+        document.getElementById('tout-duration').textContent = '—';
+        document.getElementById('tout-total').textContent = '—';
+        return;
+    }
+    warn.style.display = 'none';
+    const durationMin = roundUpMinutes(end - start);
+    const totalBill = (durationMin * session.ratePerMin) + (session.extraCharge || 0);
+    state.toutCalc = {endTime: end.toISOString(), durationMin: durationMin, totalBill: totalBill};
+    document.getElementById('tout-end').textContent = formatTime(end);
+    document.getElementById('tout-duration').textContent = formatDuration(durationMin);
+    document.getElementById('tout-total').textContent = formatCurrency(totalBill);
+    const paidInput = document.getElementById('tout-paid');
+    if (state.paymentStatus === 'paid') {
+        paidInput.value = totalBill.toFixed(0);
+        document.getElementById('tout-balance').value = '0';
+    } else if (state.paymentStatus === 'partial') {
+        const paid = parseFloat(paidInput.value) || 0;
+        document.getElementById('tout-balance').value = Math.max(0, totalBill - paid).toFixed(0);
+    } else {
+        paidInput.value = '0';
+        document.getElementById('tout-balance').value = totalBill.toFixed(0);
+    }
+}
+
 function confirmTimeIn() {
     // If Player 1 was typed but not picked from the dropdown, sync it now
     const p0input = document.querySelector('.player-name-input[data-index="0"]');
@@ -962,6 +1067,14 @@ function confirmTimeIn() {
     }
     const rate = parseFloat(document.getElementById('tin-rate').value) || 0;
     const extra = state.selectedPlayers === 4 ? (parseFloat(document.getElementById('tin-extra').value) || 0) : 0;
+    let startDate = new Date();
+    if (state.tinStartMode === 'manual') {
+        const t = document.getElementById('tin-start-time').value;
+        if (!t) { alert('Enter the actual time-in, or switch back to "Now"'); return; }
+        const r = resolveManualStart(t);
+        if (r.error) { alert(r.error); return; }
+        startDate = r.date;
+    }
     const session = {
         id: generateId(),
         resourceId: state.currentTinResource,
@@ -970,13 +1083,13 @@ function confirmTimeIn() {
         playersData: JSON.parse(JSON.stringify(state.playerSlotsData)),
         ratePerMin: rate,
         extraCharge: extra,
-        startTime: new Date().toISOString(),
+        startTime: startDate.toISOString(),
         endTime: null,
         duration: 0,
         totalBill: 0,
         paidAmount: 0,
         status: 'active',
-        date: getToday(),
+        date: startDate.toISOString().split('T')[0],
         loserIndex: -1,
         loserPays: false
     };
@@ -1047,6 +1160,10 @@ function openTimeOut(resourceId) {
     selectPaymentStatus('pending');
     document.getElementById('tout-paid').value = '0';
     document.getElementById('tout-balance').value = totalBill.toFixed(0);
+    const et = document.getElementById('tout-endtime');
+    if (et) et.value = hhmm(endTime);
+    const ew = document.getElementById('tout-endtime-warn');
+    if (ew) ew.style.display = 'none';
     document.getElementById('modal-timeout').classList.add('active');
 }
 
@@ -1118,6 +1235,7 @@ if (toutPaidInput) {
 function confirmTimeOut() {
     const session = state.resources[state.currentToutResource];
     if (!session) return;
+    if (!state.toutCalc) { alert('Fix the Actual Time Out first — it must be after the time-in.'); return; }
     if (state.loserPays && state.selectedLoserIndex < 0) {
         alert('Loser Pays is ON — select who lost, or turn the toggle off to bill Player 1.');
         return;
